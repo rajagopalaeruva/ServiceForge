@@ -10,3 +10,4 @@ frontend/.angular/
 # OS/editor
 .DS_Store
 *.log
+.idea/
