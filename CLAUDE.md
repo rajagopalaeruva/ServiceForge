@@ -12,6 +12,8 @@ This repo defines three subagents under `.claude/agents/`, matching the roles in
 - `developer-agent` — implements a committed spec into working code, loading the relevant skills and rules.
 - `tester-agent` — writes and runs tests against a spec's Definition of Done.
 
+Bug fixing is an additional capability, not a replacement for the feature roles above. For records under `pipeline/bugs/`, follow `pipeline/orchestration.md`: BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, then Tester verification. The Developer maintains technical decisions; the Tester records verification and closure. Do not treat documentation-only approval as permission to fix application code.
+
 Invoke them the way you'd invoke any Claude Code subagent, e.g.:
 
 ```

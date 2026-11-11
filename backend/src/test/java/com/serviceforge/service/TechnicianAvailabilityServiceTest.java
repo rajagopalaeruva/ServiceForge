@@ -10,14 +10,6 @@ import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-/**
- * Note for anyone extending this suite: this class covers the happy path and the one conflict
- * case Feature 1 actually catches (an exact start-time match). It does NOT test a genuine
- * interval overlap with a different start time — see
- * pipeline/features/feature-1-technician-availability.md, "Known issue," and
- * TechnicianAvailabilityService.bookJob(...) for why. Adding that test is part of the exercise,
- * not an oversight to quietly fix here.
- */
 class TechnicianAvailabilityServiceTest {
 
     private MockDataStore dataStore;
@@ -32,7 +24,7 @@ class TechnicianAvailabilityServiceTest {
 
     @Test
     void booksAJobForAnAvailableTechnician() {
-        LocalDateTime start = LocalDateTime.now().withHour(16).withMinute(0).withSecond(0).withNano(0);
+        LocalDateTime start = dataStore.getJobsForTechnician(1L).get(1).getEndTime().plusMinutes(45);
         LocalDateTime end = start.plusHours(1);
 
         Job job = service.bookJob(1L, "New Customer", start, end);

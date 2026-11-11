@@ -24,6 +24,8 @@ npm start                    # serves http://localhost:4200
 
 **"Develop this feature" is a standing instruction, not a one-off prompt.** Whenever anyone (human or agent) says "develop this feature: <intent>", the work must go through the pipeline defined in **[`pipeline/orchestration.md`](pipeline/orchestration.md)** — BA → Developer → Tester, in that order, with the relevant skills and rules loaded dynamically. Do not skip straight to writing code.
 
+Bug fixing extends these roles without replacing their feature responsibilities. Follow the same document's [bug-fix route](pipeline/orchestration.md#bug-fix-route): BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, and Tester verification. Keep one record per bug linked to its existing feature; do not assign a new feature number to restore an existing requirement. Analysis-only or documentation-only requests do not authorize a code fix.
+
 ## Where things live
 
 | What | Where |
@@ -33,7 +35,8 @@ npm start                    # serves http://localhost:4200
 | Skills (reusable how-to knowledge) | `.claude/skills/*/SKILL.md` |
 | Feature specifications (one file per feature — see the [feature-spec convention](pipeline/features/feature-1-technician-availability.md)) | `pipeline/features/feature-N-<slug>.md` |
 | Decisions made while building a feature (what later features must remember) | `pipeline/decisions/feature-N-decisions.md` |
-| Project-wide rules | added under `pipeline/rules/` as they're written — none exist yet; the first one gets created the first time a shipped bug needs a standing rule against recurring |
+| Bug records | `pipeline/bugs/bug-NNN-<slug>.md` — evidence, approval, acceptance criteria, and resolution per bug |
+| Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` |
 
 ## Coding conventions
 

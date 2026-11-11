@@ -31,5 +31,5 @@ Start at **[`AGENTS.md`](AGENTS.md)**. It's the entry point for Claude Code, Git
 ## What's deliberately here
 
 - A real, working technician-booking flow (list technicians → view their jobs → book a new one).
-- A real bug in that flow (see `pipeline/features/feature-1-technician-availability.md` and `pipeline/decisions/feature-1-decisions.md` — no spoilers here).
+- A documented bug-fix training exercise in that flow, now resolved with pre-fix and post-fix evidence in `pipeline/bugs/bug-001-booking-overlap.md`; the original requirement and decision history are preserved.
 - Pre-baked agent, skill, and pipeline artifacts, ready to extend — nothing about the *next* feature exists yet. That starts with you.

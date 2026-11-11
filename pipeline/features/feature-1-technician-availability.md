@@ -17,7 +17,9 @@
 
 ## Known issue
 
-The Definition of Done above says overlapping bookings must be rejected. As shipped, **this feature does not fully do that** — see `TechnicianAvailabilityService.bookJob(...)` in the backend. This is intentional: it is the subject of the first exercise anyone doing agent-native work on this repo will run. See `pipeline/decisions/feature-1-decisions.md` for the decision this bug relates to (the travel-buffer policy), which the fix should not break.
+The original boilerplate intentionally shipped with an equality-only start-time check that did not satisfy the overlap-rejection Definition of Done. That defect was the first agent-native training exercise. Its fix preserves the travel-buffer policy in `pipeline/decisions/feature-1-decisions.md`.
+
+Resolved and verified on 2026-11-11 as [BUG-001 - Booking overlap detection](../bugs/bug-001-booking-overlap.md). Jobs now reserve `[start, end + 45 minutes)`; exactly 45 minutes between jobs is allowed. The linked record preserves pre-fix failure evidence and passing regression results.
 
 ## Artifacts this feature touches
 
@@ -25,4 +27,7 @@ The Definition of Done above says overlapping bookings must be rejected. As ship
 - `backend/.../controller/TechnicianController.java`, `JobController.java`
 - `backend/.../model/Technician.java`, `Job.java`, `JobStatus.java`
 - `backend/.../data/MockDataStore.java`
-- No `pipeline/rules/*.md` yet — none has been needed until now
+- `pipeline/bugs/bug-001-booking-overlap.md`
+- `pipeline/rules/booking-conflicts.md`
+- `backend/src/test/java/com/serviceforge/controller/BookingOverlapRegressionTest.java`
+- `backend/src/test/java/com/serviceforge/service/TechnicianAvailabilityServiceTest.java`
