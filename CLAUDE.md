@@ -8,9 +8,9 @@ The above import brings in the tool-agnostic project rules. Everything below is 
 
 This repo defines three subagents under `.claude/agents/`, matching the roles in `pipeline/orchestration.md`:
 
-- `ba-agent` — turns a feature intent into a committed spec under `pipeline/features/`.
-- `developer-agent` — implements a committed spec into working code, loading the relevant skills and rules.
-- `tester-agent` — writes and runs tests against a spec's Definition of Done.
+- `ba-agent` — turns a feature intent into a complete requirements spec (stories, requirements, acceptance criteria, edge cases, NFRs, metrics, traceability, review log) under `pipeline/features/`, and revises it from human annotations. It never approves its own work.
+- `developer-agent` — implements a human-**Approved** spec into working code, loading the relevant skills and rules.
+- `tester-agent` — writes and runs tests per acceptance criterion / edge case ID in the spec.
 
 Bug fixing is an additional capability, not a replacement for the feature roles above. For records under `pipeline/bugs/`, follow `pipeline/orchestration.md`: BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, then Tester verification. The Developer maintains technical decisions; the Tester records verification and closure. Do not treat documentation-only approval as permission to fix application code.
 

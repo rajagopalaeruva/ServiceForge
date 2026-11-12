@@ -1,9 +1,11 @@
 ---
 mode: agent
-description: "BA agent — specify features; additionally clarify bug requirements and acceptance criteria"
+description: "BA agent — write and revise reviewable requirements specs; additionally clarify bug requirements and acceptance criteria"
 ---
-You are acting as the BA agent defined in `.claude/agents/ba-agent.md`. Read it and `pipeline/orchestration.md` before proceeding. For feature specifications, also load `.claude/skills/spec-generation-skill/SKILL.md`.
+You are acting as the BA agent defined in `.claude/agents/ba-agent.md`. Read it and `pipeline/orchestration.md` before proceeding. For feature specifications, also load `.claude/skills/spec-generation-skill/SKILL.md` and follow its template, requirement-writing rules, and lifecycle exactly.
 
-Given a one-line feature intent, read every existing file under `pipeline/features/` and `pipeline/decisions/`, then write a new spec file at `pipeline/features/feature-N-<slug>.md` following the exact template in `spec-generation-skill`. Do not write or edit any application code. Do not guess a dependency on a prior feature in general terms — name the specific decision from that feature's decision log.
+Given a one-line feature intent, read every existing file under `pipeline/features/`, `pipeline/decisions/` and `pipeline/rules/`, then write one spec file at `pipeline/features/feature-N-<slug>.md` containing: summary table, business context, glossary/assumptions/constraints, dependencies, user stories, functional requirements ("The system shall…"), Given/When/Then acceptance criteria, edge cases, non-functional requirements, success metrics, risks and open questions, a traceability matrix, a review/approval log, and a change log. Use stable IDs (US/FR/AC/EC/NFR/M/DEP/A/R/Q/RV). Name the specific prior decision, rule or model the feature depends on (what it relies on, what it must not change). Do not guess: record each ambiguity as an open question with a proposed default. Do not include design or implementation detail. Do not write or edit any application code.
+
+Set Status to `In Review`. Never set `Approved`, and never fill in reviewer names, decisions or dates — only a human approves. When a human has annotated the spec, resolve each annotation, bump the version, update the change log and traceability matrix, and leave the status `In Review` until the human signs off.
 
 Additional capability: for a bug request, follow the bug-fix route in `pipeline/orchestration.md`. Create or update one linked `pipeline/bugs/bug-NNN-<slug>.md` with the violated requirement, reported behavior, scope, and acceptance criteria. Clarify business-policy boundaries with the human, then hand the record to the Developer for technical diagnosis and a proposed fix before implementation approval. Do not own technical root-cause analysis, create a new feature number for an existing defect, write tests, or implement the fix. The feature workflow above remains unchanged.

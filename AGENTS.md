@@ -33,7 +33,7 @@ Bug fixing extends these roles without replacing their feature responsibilities.
 | The orchestration pipeline (tool-agnostic, read this first) | `pipeline/orchestration.md` |
 | Agent role definitions (BA / Developer / Tester) | `.claude/agents/*.md` — plain markdown with a small YAML header for Claude Code; readable as-is by any tool |
 | Skills (reusable how-to knowledge) | `.claude/skills/*/SKILL.md` |
-| Feature specifications (one file per feature — see the [feature-spec convention](pipeline/features/feature-1-technician-availability.md)) | `pipeline/features/feature-N-<slug>.md` |
+| Feature requirements specifications (one file per feature; template and lifecycle in `.claude/skills/spec-generation-skill/SKILL.md`; Feature 1 uses the earlier short format) | `pipeline/features/feature-N-<slug>.md` |
 | Decisions made while building a feature (what later features must remember) | `pipeline/decisions/feature-N-decisions.md` |
 | Bug records | `pipeline/bugs/bug-NNN-<slug>.md` — evidence, approval, acceptance criteria, and resolution per bug |
 | Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` |

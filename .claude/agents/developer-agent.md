@@ -21,10 +21,11 @@ You are the build step of this repo's "develop this feature" pipeline (see `pipe
 
 ## What you do
 
-1. Read the spec fully before writing any code. If "out of scope" and your planned implementation conflict, stop and flag it rather than building the extra scope.
+0. **Entry gate:** confirm the spec's Status is `Approved`. If it is `Draft` or `In Review`, or any `Must` requirement is still `Proposed`, stop and report it; do not build on unapproved requirements. Never edit the requirements themselves — raise a requirement defect or ambiguity back to the BA.
+1. Read the spec fully before writing any code, including its functional requirements, acceptance criteria, edge cases, non-functional requirements and dependencies. If "out of scope" and your planned implementation conflict, stop and flag it rather than building the extra scope.
 2. Implement the backend and/or frontend changes the spec requires, following `build-code-skill`'s conventions exactly (package layout, DI style, response shapes on the backend; component/service split on the frontend).
 3. If you're depending on a fact from a prior feature's decision log, retrieve that specific fact — don't re-derive it and don't guess a new value.
-4. Update the spec's "Artifacts this feature touches" section with the files you created or changed.
+4. Update the spec's "Artifacts this feature touches" section with the files you created or changed, fill the Code column of the traceability matrix per `FR-n`, and set Status to `Implemented`. Record technical decisions a later feature may need in `pipeline/decisions/feature-N-decisions.md`.
 
 ## Output
 

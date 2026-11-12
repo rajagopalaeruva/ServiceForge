@@ -16,23 +16,37 @@ That one line is the only input. Everything else below is how it gets turned int
 
 - **Role definition:** `.claude/agents/ba-agent.md`
 - **Skill it loads:** `.claude/skills/spec-generation-skill/SKILL.md`
-- **What it does:** takes the raw intent, asks what it needs to (scope, dependencies on prior features, definition of done), and commits a new file at `pipeline/features/feature-N-<slug>.md` following the same template as `pipeline/features/feature-1-technician-availability.md`.
-- **What it must check first:** every existing file under `pipeline/features/` and `pipeline/decisions/`, so the new spec correctly names what it depends on instead of guessing.
-- **Output:** one committed spec file. Nothing gets built yet.
+- **What it does:** takes the raw intent and produces a complete requirements specification at `pipeline/features/feature-N-<slug>.md` using the template in `spec-generation-skill`: business context, assumptions and constraints, dependencies, user stories, functional requirements, Given/When/Then acceptance criteria, edge cases, non-functional requirements, success metrics, risks and open questions, a traceability matrix, a review/approval log, and a change log. Every item has a stable ID (`US-`, `FR-`, `AC-`, `EC-`, `NFR-`, `M-`, `DEP-`, `A-`, `R-`, `Q-`, `RV-`). Feature 1 uses the earlier short format and is grandfathered.
+- **What it must check first:** every existing file under `pipeline/features/`, `pipeline/decisions/` and `pipeline/rules/`, so the new spec correctly names what it depends on instead of guessing.
+- **Output:** one spec file with Status `In Review`, plus a list of the open questions that need a human decision. Nothing gets built yet. The BA never sets `Approved`.
+
+#### Requirements lifecycle
+
+`Draft → In Review → Approved → Implemented → Verified`
+
+| Status | Set by | Meaning |
+|---|---|---|
+| Draft / In Review | BA | Written and self-reviewed; waiting for human inspection |
+| Approved | **Human only** (sign-off table in the spec) | Baselined; the Developer may start |
+| Implemented | Developer | Code complete against the approved version |
+| Verified | Tester | Every Must acceptance criterion passed; evidence linked |
+
+Changes after `Approved` are change requests: the BA revises the spec, bumps the major version, logs the change, and the human re-approves before the Developer continues. The Developer and Tester do not edit requirements; they raise issues back to the BA.
 
 ### 2 — Developer (turns the spec into code)
 
 - **Role definition:** `.claude/agents/developer-agent.md`
 - **Skills it loads:** `.claude/skills/build-code-skill/SKILL.md` (stack conventions) and, if the change touches the data model, `.claude/skills/migration-safety-skill/SKILL.md`.
 - **Rules it must follow:** everything under `pipeline/rules/*.md` that exists at the time.
-- **What it does:** implements the spec from step 1, in the backend and/or frontend as the spec requires, without expanding scope beyond what the spec says.
+- **Entry gate:** the spec's Status must be `Approved` (signed off by a human). If it is `Draft` or `In Review`, stop and say so.
+- **What it does:** implements the spec from step 1, in the backend and/or frontend as the spec requires, without expanding scope beyond what the spec says. It records which files implement which `FR-n` in the spec's traceability matrix, and sets Status `Implemented`.
 - **Output:** working code, committed.
 
 ### 3 — Tester (checks the code against the spec)
 
 - **Role definition:** `.claude/agents/tester-agent.md`
-- **What it does:** writes and runs tests against the Definition of Done in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do.
-- **Output:** test results. If they fail, the loop returns to step 2, not step 1 — the spec doesn't change because the code didn't meet it.
+- **What it does:** writes and runs tests against the acceptance criteria (`AC-n`) and edge cases (`EC-n`) in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do. Tests are named or tagged with the IDs they verify, and the traceability matrix's Test column is filled in.
+- **Output:** test results reported per `AC-n`/`EC-n`. If they fail, the loop returns to step 2, not step 1 — the spec doesn't change because the code didn't meet it. When every Must criterion passes, the Tester sets Status `Verified`. A criterion that cannot be tested goes back to the BA as a requirement defect.
 
 ## Safe recovery
 
@@ -40,7 +54,7 @@ If any step produces something that doesn't match its input (a spec with no Defi
 
 ## Human checkpoints
 
-A human should look at the output of step 1 (the spec) before step 2 starts — specs are cheap to correct, code is not. Everything else can run unattended unless something trips the safe-recovery condition above.
+A human must review and approve the output of step 1 (the spec) before step 2 starts — specs are cheap to correct, code is not. This is a hard gate, not a suggestion. The review is recorded in the spec itself: the human resolves each open `RV-n` annotation and `Q-n` question, then completes the sign-off table, which moves Status to `Approved`. The BA resolves annotations and re-submits until the human is satisfied. Everything else can run unattended unless something trips the safe-recovery condition above.
 
 ## Bug-fix route
 
