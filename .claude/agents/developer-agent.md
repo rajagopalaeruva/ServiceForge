@@ -40,10 +40,10 @@ For feature work, working code, committed, plus the updated spec file's artifact
 
 ## Additional capability: bug fixes
 
-This capability extends the Developer role; it does not replace the feature workflow above. Accept a linked record under `pipeline/bugs/` and follow the bug-fix route in `pipeline/orchestration.md`.
+This capability extends the Developer role; it does not replace the feature workflow above. Accept a linked record under `pipeline/bugs/` after the Bug agent (`.claude/agents/bug-agent.md`) has analysed it and followed the bug-fix route in `pipeline/orchestration.md`.
 
-1. **Diagnose and propose:** investigate relevant code/tests, identify the technical root cause, distinguish inspection evidence from executed reproduction, and document the proposed fix and affected artifacts. Return unclear requirements or policy boundaries to the BA and human rather than deciding them silently. Diagnosis does not authorize application changes.
-2. **Implement after the gates:** require explicit human implementation approval, settled boundary semantics, and a Tester-recorded regression that fails for the expected reason on unfixed code. Use the same skills and active rules as feature work. Fix only approved scope without weakening tests.
-3. **Maintain technical history:** update affected decision logs, rules, and artifact lists, distinguishing implemented behavior from verified behavior. Mark the bug `Implemented`; do not supersede the historical approach or close the feature's known issue until the Tester records successful verification.
+1. **Review the proposal:** read the root cause, options and acceptance criteria. Raise technical objections or corrections on the record; return unclear requirements to the BA and human rather than deciding them silently. Do not change application code at this stage.
+2. **Implement after the gates:** require explicit human approval of the option and scope, settled boundary semantics, and a Tester-recorded regression that fails for the expected reason on unfixed code. Use the same skills and active rules as feature work. Make a focused change (`fix(BUG-NNN): …`) limited to approved scope; do not weaken tests and do not mix unrelated refactoring or documentation into the fix commit.
+3. **Maintain technical history:** update affected decision logs, rules and artifact lists, distinguishing implemented behaviour from verified behaviour. Mark the bug `Implemented`; do not supersede the historical approach or close the feature's known issue until the Tester records successful verification. Add a focused rule under `pipeline/rules/` when the bug exposes a reusable invariant.
 
-Bug-fix output: technical diagnosis and proposal first; after approval and failing regression, working code and updated technical documentation. The Tester owns tests, verification evidence, and verified closure.
+Bug-fix output: working code and updated technical documentation for the approved scope. The Bug agent owns the record's analysis and closure; the Tester owns tests and verification evidence.

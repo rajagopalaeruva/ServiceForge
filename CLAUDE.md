@@ -11,8 +11,9 @@ This repo defines three subagents under `.claude/agents/`, matching the roles in
 - `ba-agent` — turns a feature intent into a complete requirements spec (stories, requirements, acceptance criteria, edge cases, NFRs, metrics, traceability, review log) under `pipeline/features/`, and revises it from human annotations. It never approves its own work.
 - `developer-agent` — implements a human-**Approved** spec into working code, loading the relevant skills and rules.
 - `tester-agent` — writes and runs tests per acceptance criterion / edge case ID in the spec.
+- `bug-agent` — owns a bug record: triage, reproduction, root cause, impact, escape analysis, findings and fix options; never edits code or approves its own proposal.
 
-Bug fixing is an additional capability, not a replacement for the feature roles above. For records under `pipeline/bugs/`, follow `pipeline/orchestration.md`: BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, then Tester verification. The Developer maintains technical decisions; the Tester records verification and closure. Do not treat documentation-only approval as permission to fix application code.
+Bug fixing is an additional capability, not a replacement for the feature roles above. For records under `pipeline/bugs/`, follow `pipeline/orchestration.md`: bug-agent intake and analysis, human approval, Tester failing regression, Developer implementation, Tester verification, then bug-agent preventive action and closure. The Developer maintains technical decisions; the Tester records verification. Do not treat documentation-only approval as permission to fix application code.
 
 Invoke them the way you'd invoke any Claude Code subagent, e.g.:
 
@@ -28,6 +29,7 @@ Skills live under `.claude/skills/<skill-name>/SKILL.md` (standard Claude Agent 
 
 - `build-code-skill` — backend + frontend stack conventions for this repo.
 - `spec-generation-skill` — how the BA agent turns intent into a feature spec.
+- `bug-analysis-skill` — how the bug agent triages, reproduces, root-causes and proposes fixes for a defect.
 - `migration-safety-skill` — how to evolve the mock data model without breaking existing consumers (there is no real database, but the same discipline applies to the in-memory model).
 
 ## Memory note for this repo

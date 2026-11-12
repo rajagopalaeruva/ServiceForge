@@ -24,18 +24,18 @@ npm start                    # serves http://localhost:4200
 
 **"Develop this feature" is a standing instruction, not a one-off prompt.** Whenever anyone (human or agent) says "develop this feature: <intent>", the work must go through the pipeline defined in **[`pipeline/orchestration.md`](pipeline/orchestration.md)** — BA → Developer → Tester, in that order, with the relevant skills and rules loaded dynamically. Do not skip straight to writing code.
 
-Bug fixing extends these roles without replacing their feature responsibilities. Follow the same document's [bug-fix route](pipeline/orchestration.md#bug-fix-route): BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, and Tester verification. Keep one record per bug linked to its existing feature; do not assign a new feature number to restore an existing requirement. Analysis-only or documentation-only requests do not authorize a code fix.
+Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and extends the BA, Developer and Tester roles without replacing their feature responsibilities. Follow the same document's [bug-fix route](pipeline/orchestration.md#bug-fix-route): bug-agent intake, triage, reproduction, root-cause analysis and fix proposal; human approval; Tester failing regression; Developer implementation; Tester verification; bug-agent preventive action and closure. Keep one record per bug, from `pipeline/bugs/_template.md`, linked to its existing feature; do not assign a new feature number to restore an existing requirement. Requirement gaps go to the BA's feature route. Analysis-only or documentation-only requests do not authorize a code fix.
 
 ## Where things live
 
 | What | Where |
 |---|---|
 | The orchestration pipeline (tool-agnostic, read this first) | `pipeline/orchestration.md` |
-| Agent role definitions (BA / Developer / Tester) | `.claude/agents/*.md` — plain markdown with a small YAML header for Claude Code; readable as-is by any tool |
+| Agent role definitions (BA / Developer / Tester / Bug) | `.claude/agents/*.md` — plain markdown with a small YAML header for Claude Code; readable as-is by any tool |
 | Skills (reusable how-to knowledge) | `.claude/skills/*/SKILL.md` |
 | Feature requirements specifications (one file per feature; template and lifecycle in `.claude/skills/spec-generation-skill/SKILL.md`; Feature 1 uses the earlier short format) | `pipeline/features/feature-N-<slug>.md` |
 | Decisions made while building a feature (what later features must remember) | `pipeline/decisions/feature-N-decisions.md` |
-| Bug records | `pipeline/bugs/bug-NNN-<slug>.md` — evidence, approval, acceptance criteria, and resolution per bug |
+| Bug records (template: `pipeline/bugs/_template.md`) | `pipeline/bugs/bug-NNN-<slug>.md` — severity/priority, evidence, root cause, impact, options, approval, and resolution per bug |
 | Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` |
 
 ## Coding conventions

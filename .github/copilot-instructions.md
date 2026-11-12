@@ -6,11 +6,11 @@ Read `AGENTS.md` at the repo root first — it is the tool-agnostic entry point 
 
 Any "develop this feature: `<intent>`" request must go through the three-step pipeline in `pipeline/orchestration.md` (BA → Developer → Tester). Do not jump straight to writing code for a new feature.
 
-Bug fixing adds to, rather than replaces, the existing feature roles. Follow that document's bug-fix route using a linked record under `pipeline/bugs/`: BA requirements triage, Developer diagnosis/proposal, human approval, Tester failing regression, Developer implementation, Tester verification. The Developer owns technical decisions; the Tester owns verification evidence and closure. Documentation-only approval does not authorize a code fix.
+Bug fixing adds to, rather than replaces, the existing feature roles and is owned by the bug agent. Follow that document's bug-fix route using a linked record under `pipeline/bugs/` (template: `_template.md`): bug-agent intake, triage, reproduction, analysis and fix proposal; human approval; Tester failing regression; Developer implementation; Tester verification; bug-agent preventive action and closure. The Developer owns technical decisions; the Tester owns verification evidence. Documentation-only approval does not authorize a code fix.
 
 ## Role definitions
 
-The BA, Developer, and Tester roles are defined in full under `.claude/agents/*.md`. They were written in Claude Code's subagent format (a small YAML header, then the role body) but the content is plain markdown — read and follow them the same way you'd follow any instruction file. Reusable slash-command versions of the same three roles are in `.github/prompts/` if you'd rather invoke them that way.
+The BA, Developer, Tester and Bug roles are defined in full under `.claude/agents/*.md`. They were written in Claude Code's subagent format (a small YAML header, then the role body) but the content is plain markdown — read and follow them the same way you'd follow any instruction file. Reusable slash-command versions of the same three roles are in `.github/prompts/` if you'd rather invoke them that way.
 
 ## Skills
 

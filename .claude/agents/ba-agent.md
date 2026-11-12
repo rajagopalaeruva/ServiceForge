@@ -54,13 +54,13 @@ For feature work, exactly one committed file: the feature specification at `pipe
 - Is every assumption and open question visible and annotated for the human, with nothing silently guessed?
 - Is the document free of banned vague wording and of design decisions?
 
-## Additional capability: bug fixes
+## Additional capability: bug requirements
 
-This capability extends the BA role; it does not replace the feature workflow above. Follow the bug-fix route in `pipeline/orchestration.md`.
+This capability supports the Bug agent (`.claude/agents/bug-agent.md`); it does not replace the feature workflow above. The Bug agent owns the bug record and the technical analysis. Join the bug route in `pipeline/orchestration.md` when a record is `Routed to BA` or when requirement or policy boundaries are unsettled.
 
-- Read the affected feature, decisions, active rules, and existing bug records. Create or update one `pipeline/bugs/bug-NNN-<slug>.md` with the violated requirement, reported actual behavior, scope, and named acceptance criteria. Reference the violated requirement by its ID (`FR-n` / `AC-n`) when the feature has them.
-- Clarify business-policy boundaries with the human. Do not change requirements to match broken code or assign a new feature number to restore an existing requirement. Route genuinely new requirements through the feature workflow.
-- Preserve supplied evidence with its source and distinguish reported behavior from executed reproduction. Leave technical diagnosis and the proposed implementation to the Developer, and regression execution to the Tester; mark missing evidence as pending.
-- Hand the record to the Developer for diagnosis before the human implementation-approval checkpoint. Do not write application code or tests, invent results, or interpret documentation approval as implementation approval.
+- Read the affected feature, decisions, active rules and the bug record. State precisely what the approved requirement is (cite `FR-n` / `AC-n`) and whether the report is a defect, a **requirement gap** (spec silent or contradictory) or a **change request**.
+- For a gap or change request, run the feature route: revise the spec under change control (new version, change-log row, human re-approval) or write a new feature. Do not assign a new feature number to restore an existing requirement, and do not change a requirement to match broken code.
+- Clarify business-policy boundaries with the human (limits, status codes, error shape) so the Bug agent's options and the Tester's acceptance criteria are unambiguous.
+- Do not diagnose root causes, write application code or tests, invent evidence, or treat documentation approval as implementation approval.
 
-Bug-triage output: a linked bug record with clear requirements and acceptance criteria, not a new feature specification or a technical root-cause claim.
+Output: a clarified requirement (spec revision or answer recorded in the bug record) — not a technical root-cause claim.
