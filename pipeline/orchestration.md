@@ -89,6 +89,18 @@ Agents read the smallest set of files that is enough, so a long history does not
 - Bug records are read at the section a step needs (status history and acceptance criteria for the Tester; options and boundary semantics for the Developer).
 - Never paste whole logs or build output into the conversation or a record: record the command, the totals and the relevant failure lines.
 
+## Delegation to sub-agents
+
+Where the tool supports sub-agents, these steps are delegated to keep each role's context small and independent. If it does not, the role does the work itself under the same rules.
+
+| Step | Delegated to | Brief and return |
+|---|---|---|
+| Developer: impact analysis before coding | A context-gathering sub-agent | Spec requirement IDs in scope, ADR index, code areas. Returns files to change, contracts and tests that must not break, and applicable ADR and rule constraints. |
+| Tester: writing tests | An independent sub-agent | Spec, ADRs and the test skill only, never the implementation. Returns test files. |
+| Tester: live check | A task sub-agent | Port, exact requests and expected responses. Returns a table and confirmation the server was stopped. |
+
+The role that delegates stays responsible for the result: it reviews what comes back, runs the suite itself, and records the evidence.
+
 ## Safe recovery
 
 If any step produces something that doesn't match its input (a spec with no Definition of Done, code that doesn't match the spec, tests that can't run), stop and surface that to a human rather than proceeding on a guess. This pipeline has no silent fallback.

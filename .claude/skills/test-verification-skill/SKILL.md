@@ -50,6 +50,7 @@ Use this to repeat a reproduction against the real application.
 1. Never use port 8080: it may be someone's own server. Pick a free port and start with `mvn -q spring-boot:run "-Dspring-boot.run.arguments=--server.port=<port>"` from `backend/`.
 2. Wait until `GET /api/technicians` answers, send the requests, then stop the process you started. Confirm the port is closed. Leave any process you did not start alone.
 3. Report requests and responses as a table, not as raw logs.
+4. When a sub-agent is available, delegate the whole live check to it. Its brief must contain: the port to use, the exact requests to send and the response expected for each, the rule to stop only the process it started, and the required return format (table of request, status, body, plus "server stopped: yes/no"). It must not return raw logs or edit any file.
 
 ## Evidence format (in the spec or bug record)
 
