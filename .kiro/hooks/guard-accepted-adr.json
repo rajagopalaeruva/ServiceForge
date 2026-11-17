@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Confirm before editing an accepted ADR",
+      "trigger": "PreToolUse",
+      "description": "Asks the human to confirm any edit or delete of an ADR whose status is accepted. Accepted ADRs are immutable; a change of mind is a new superseding ADR.",
+      "matcher": "fs_write|str_replace|fs_append|delete_file",
+      "action": {
+        "type": "command",
+        "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/guard-accepted-adr.ps1",
+        "timeout": 20
+      }
+    }
+  ]
+}

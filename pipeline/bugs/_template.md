@@ -1,6 +1,6 @@
 # BUG-NNN — <Short title>
 
-> Copy this file to `bug-NNN-<slug>.md`. Keep every section; write "None" or "Pending" rather than deleting one. BUG-001 uses the earlier format and is grandfathered.
+> Copy this file to `bug-NNN-<slug>.md`. Sections 1–9 and 14 are required by the time the status reaches `Fix Proposed`. Add sections 10–13 when their stage is reached (regression and verification evidence, preventive actions, artifacts, lessons and metrics); do not write "Pending" placeholders, and do not delete a section once added. Keep entries short: record commands, totals and the relevant failure lines, not whole logs. BUG-001 uses the earlier format and is grandfathered.
 
 | Field | Value |
 |---|---|
@@ -12,7 +12,7 @@
 | **Violated requirement** | <FR-n / AC-n, decision, or rule link; or "none — requirement gap"> |
 | **Reported by / date** | <name, date> |
 | **Found in** | <commit hash, environment> |
-| **Implementation approval** | Pending — <approver, date, scope approved> |
+| **Implementation approval** | <approver, date, scope approved — written when the human approves; until then "Not yet approved"> |
 | **Related records** | <duplicates, adjacent bugs, features> |
 
 ## 1. Summary
@@ -51,7 +51,7 @@ Steps, input, command, expected result, actual result. Label each item **Execute
 `AC-n` — named, pass/fail, testable cases the Tester will turn into regression tests.
 
 ## 10. Regression and verification evidence
-Commands, pre-fix failure, post-fix results, remaining gaps. "Not run" until executed. Never invent evidence.
+Added when the Tester starts. Commands, code state (commit), pre-fix failure, post-fix results, remaining gaps; format in `.claude/skills/test-verification-skill/SKILL.md`. Never invent evidence.
 
 ## 11. Preventive actions (CAPA)
 New test / rule / decision / requirement change / review item — with links, or "none needed" and why.

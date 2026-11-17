@@ -24,7 +24,7 @@ npm start                    # serves http://localhost:4200
 
 **"Develop this feature" is a standing instruction, not a one-off prompt.** Whenever anyone (human or agent) says "develop this feature: <intent>", the work must go through the pipeline defined in **[`pipeline/orchestration.md`](pipeline/orchestration.md)** — BA → Architect → Developer → Tester, in that order, with the relevant skills and rules loaded dynamically. Do not skip straight to writing code.
 
-Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and extends the BA, Developer and Tester roles without replacing their feature responsibilities. Follow the same document's [bug-fix route](pipeline/orchestration.md#bug-fix-route): bug-agent intake, triage, reproduction, root-cause analysis and fix proposal; human approval; Tester failing regression; Developer implementation; Tester verification; bug-agent preventive action and closure. Keep one record per bug, from `pipeline/bugs/_template.md`, linked to its existing feature; do not assign a new feature number to restore an existing requirement. Requirement gaps go to the BA's feature route. Analysis-only or documentation-only requests do not authorize a code fix.
+Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and follows the [bug-fix route](pipeline/orchestration.md#bug-fix-route) in the same document, using one record per bug from `pipeline/bugs/_template.md`. Requirement gaps go to the BA's feature route. Analysis-only or documentation-only requests do not authorize a code fix.
 
 ## Where things live
 
@@ -37,7 +37,8 @@ Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and ext
 | Decisions made while building a feature (what later features must remember) | `pipeline/decisions/feature-N-decisions.md` |
 | Architecture Decision Records (MADR; one file per design decision, written by the Architect before the Developer builds; template and index inside) | `pipeline/decisions/adr/ADR-NNN-<slug>.md`, `_template.md`, `_index.md` |
 | Bug records (template: `pipeline/bugs/_template.md`) | `pipeline/bugs/bug-NNN-<slug>.md` — severity/priority, evidence, root cause, impact, options, approval, and resolution per bug |
-| Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` |
+| Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` and `api-error-contract.md` |
+| Automated pipeline checks (entry gates, test traceability, ADR guard); usage in `pipeline/orchestration.md` | `scripts/*.ps1` |
 
 ## Coding conventions
 

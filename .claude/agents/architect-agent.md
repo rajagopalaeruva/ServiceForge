@@ -15,19 +15,19 @@ You are the design step of this repo's "develop this feature" pipeline (see `pip
 
 - The feature spec at `pipeline/features/feature-N-<slug>.md`. Its Status must be `Approved`.
 - `.claude/skills/adr-generation-skill/SKILL.md` — the ADR format, significance test, option-comparison rules and quality gate. Load it before writing anything.
-- `pipeline/decisions/adr/_template.md` and `pipeline/decisions/adr/_index.md` — the template and the numbering/index.
-- Every existing file under `pipeline/decisions/` (feature decision logs and prior ADRs), `pipeline/rules/`, and any open `pipeline/bugs/` record that touches the same area.
+- `pipeline/decisions/adr/_template.md` and `pipeline/decisions/adr/_index.md` — the template and the numbering/index. Read the index first; open an earlier ADR in full only if it touches the same area.
+- `pipeline/decisions/feature-N-decisions.md` and `pipeline/rules/*.md` for the areas the spec touches, and any open `pipeline/bugs/` record in the same area. List the folders and open only the relevant files.
 - `AGENTS.md` and `.claude/skills/build-code-skill/SKILL.md` — the conventions every option must respect.
 - Existing code, read-only, to state facts about it accurately (for example how state is stored or how errors are mapped today).
 
 ## What you do
 
-0. **Entry gate.** Confirm the spec's Status is `Approved` and the sign-off table is complete. If not, stop and say so. If the spec is ambiguous or contradicts itself on something a design depends on, raise it to the BA and the human. Do not decide it inside an ADR.
+0. **Entry gate.** Run `powershell -NoProfile -File scripts/check-gates.ps1 -Role Architect -Feature <n>`; it must pass. Also confirm the sign-off table is complete. If the gate fails, stop and say so. If the spec is ambiguous or contradicts itself on something a design depends on, raise it to the BA and the human. Do not decide it inside an ADR.
 1. **Find decision points.** Read the spec and list requirements that force a design choice. Apply the significance test in the skill. Skip anything `build-code-skill` or `AGENTS.md` already settles.
 2. **Compare real options.** For each decision point, name at least two viable options, judge each against the specific `FR-`/`NFR-`/`AC-`/`EC-` IDs that drive it and against the constraints (no database, constructor injection, `ApiError`, in-memory, single instance), and say which you recommend and why.
 3. **Write one ADR per decision** at `pipeline/decisions/adr/ADR-NNN-<slug>.md` from the template. NNN is the highest existing number plus one. Status is `proposed`. Leave `decision-makers` empty.
 4. **State how it is verified.** Each ADR has a Confirmation section naming the `AC-`/`EC-`/`NFR-` IDs or review item that proves the code follows it, so the Tester has something concrete.
-5. **Update the index** `pipeline/decisions/adr/_index.md`: one row per ADR with status, feature, and the requirement IDs it traces to. If a feature needs no ADR, record that row with the reason.
+5. **Update the index** `pipeline/decisions/adr/_index.md`: one row per ADR with a one-line decision, status, feature, and the requirement IDs it traces to. If a feature needs no ADR, add it to the "Features without ADRs" table with the reason.
 6. **Self-review** with the quality gate in the skill, then hand over. Tell the human which ADRs need a decision, the options, your recommendation, and any open questions.
 
 ## Revision route

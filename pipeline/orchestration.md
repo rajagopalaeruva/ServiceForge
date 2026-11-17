@@ -17,7 +17,7 @@ That one line is the only input. Everything else below is how it gets turned int
 - **Role definition:** `.claude/agents/ba-agent.md`
 - **Skill it loads:** `.claude/skills/spec-generation-skill/SKILL.md`
 - **What it does:** takes the raw intent and produces a complete requirements specification at `pipeline/features/feature-N-<slug>.md` using the template in `spec-generation-skill`: business context, assumptions and constraints, dependencies, user stories, functional requirements, Given/When/Then acceptance criteria, edge cases, non-functional requirements, success metrics, risks and open questions, a traceability matrix, a review/approval log, and a change log. Every item has a stable ID (`US-`, `FR-`, `AC-`, `EC-`, `NFR-`, `M-`, `DEP-`, `A-`, `R-`, `Q-`, `RV-`). Feature 1 uses the earlier short format and is grandfathered.
-- **What it must check first:** every existing file under `pipeline/features/`, `pipeline/decisions/` and `pipeline/rules/`, so the new spec correctly names what it depends on instead of guessing.
+- **What it must check first:** the files under `pipeline/features/`, `pipeline/decisions/` and `pipeline/rules/` that the new feature could depend on or contradict (read in full), and the headings of the rest, so the new spec correctly names what it depends on instead of guessing.
 - **Output:** one spec file with Status `In Review`, plus a list of the open questions that need a human decision. Nothing gets built yet. The BA never sets `Approved`.
 
 #### Requirements lifecycle
@@ -37,8 +37,8 @@ Changes after `Approved` are change requests: the BA revises the spec, bumps the
 
 - **Role definition:** `.claude/agents/architect-agent.md`
 - **Skill it loads:** `.claude/skills/adr-generation-skill/SKILL.md`
-- **What it must read first:** the approved spec, `AGENTS.md`, `build-code-skill`, every file under `pipeline/decisions/` (including earlier ADRs), `pipeline/rules/`, and any open bug record in the same area.
-- **Entry gate:** the spec's Status must be `Approved`. If not, stop and say so.
+- **What it must read first:** the approved spec, `AGENTS.md`, `build-code-skill`, `pipeline/decisions/adr/_index.md` (open an earlier ADR in full only if it touches the same area), the decision logs and rules for the areas the spec touches, and any open bug record in the same area.
+- **Entry gate:** run `scripts/check-gates.ps1 -Role Architect -Feature N`; it must pass (spec `Approved`). If not, stop and say so.
 - **What it does:** finds the decisions the spec forces that are worth recording (the significance test in the skill), compares at least two real options for each against the spec's requirement IDs and the repo constraints, and writes one ADR per decision in MADR format at `pipeline/decisions/adr/ADR-NNN-<slug>.md`. Each ADR names how it will be confirmed (`AC-`/`EC-`/`NFR-` IDs). It updates `pipeline/decisions/adr/_index.md`. If a feature needs no ADR, the index records that with the reason. Requirement gaps go back to the BA, not into an ADR.
 - **Output:** ADRs with status `proposed`, the updated index, and the list of decisions a human must make. The Architect never sets `accepted`. Feature 1 predates ADRs and is not retrofitted.
 
@@ -56,16 +56,38 @@ Changes after `Approved` are change requests: the BA revises the spec, bumps the
 
 - **Role definition:** `.claude/agents/developer-agent.md`
 - **Skills it loads:** `.claude/skills/build-code-skill/SKILL.md` (stack conventions) and, if the change touches the data model, `.claude/skills/migration-safety-skill/SKILL.md`.
-- **Rules it must follow:** everything under `pipeline/rules/*.md` that exists at the time, and every `accepted` ADR for the feature.
-- **Entry gate:** the spec's Status must be `Approved` (signed off by a human), and every ADR the index lists for the feature must be `accepted` (or the index must record that none is needed). If the spec is `Draft` or `In Review`, or an ADR is still `proposed`, stop and say so. Feature 1 has no ADRs and is exempt.
+- **Rules it must follow:** the Required invariant of each file under `pipeline/rules/*.md` that touches its layer, and every `accepted` ADR for the feature (read the ADR index first, then each listed ADR's Decision Outcome, Consequences and Confirmation).
+- **Entry gate:** run `scripts/check-gates.ps1 -Role Developer -Feature N`. It requires the spec Status to be `Approved` (signed off by a human), no `Must` requirement still `Proposed`, and every ADR the index lists for the feature `accepted` (or a row in the index's "Features without ADRs" table). If it fails, stop and say so. Feature 1 is a pre-baked reference, not a build target.
 - **What it does:** implements the spec from step 1 inside the ADRs from step 2, in the backend and/or frontend as the spec requires, without expanding scope beyond what the spec says. If the code would need to deviate from an accepted ADR, stop and return it to the Architect; do not edit the ADR. It records which files implement which `FR-n` in the spec's traceability matrix, and sets Status `Implemented`.
 - **Output:** working code, committed.
 
 ### 4 — Tester (checks the code against the spec)
 
 - **Role definition:** `.claude/agents/tester-agent.md`
-- **What it does:** writes and runs tests against the acceptance criteria (`AC-n`) and edge cases (`EC-n`) in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do. It also covers the Confirmation items of each accepted ADR for the feature. Tests are named or tagged with the IDs they verify, and the traceability matrix's Test column is filled in.
+- **Skill it loads:** `.claude/skills/test-verification-skill/SKILL.md`
+- **Entry gate:** `scripts/check-gates.ps1 -Role Tester -Feature N` must pass.
+- **What it does:** writes and runs tests against the acceptance criteria (`AC-n`) and edge cases (`EC-n`) in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do. It also covers the Confirmation items of each accepted ADR for the feature. Tests are tagged with the feature-scoped IDs they verify (for example `F2_AC_6_…`), `scripts/check-traceability.ps1 -Feature N` confirms every required ID has one, and the traceability matrix's Test column is filled in.
 - **Output:** test results reported per `AC-n`/`EC-n`. If they fail, the loop returns to step 3, not step 1 — the spec doesn't change because the code didn't meet it. When every Must criterion passes, the Tester sets Status `Verified`. A criterion that cannot be tested goes back to the BA as a requirement defect. A Confirmation item that cannot be tested goes back to the Architect as an ADR defect.
+
+## Automated checks
+
+Scripts under `scripts/` (PowerShell; run with `powershell -NoProfile -File scripts/<name>.ps1`) make the gates and traceability deterministic. They only read files and print PASS/FAIL; exit code 1 means stop.
+
+| Script | Use |
+|---|---|
+| `check-gates.ps1 -Role <Architect\|Developer\|Tester> -Feature N` | Entry gate: spec status, no `Must` requirement `Proposed`, ADR statuses |
+| `check-traceability.ps1 -Feature N` | Lists `Must` acceptance criteria and all edge cases that have no test tagged `F<N>_AC_<n>` / `F<N>_EC_<n>` |
+| `guard-accepted-adr.ps1` | Hook helper (`.kiro/hooks/guard-accepted-adr.json`): asks for confirmation before an edit to an `accepted` ADR |
+
+## Context discipline
+
+Agents read the smallest set of files that is enough, so a long history does not crowd out the task:
+
+- List a folder, read its index or headings, then open a file in full only when it applies to the work.
+- Specs are read by ID: the requirements in scope, their dependencies and out-of-scope rows.
+- ADRs are read through `pipeline/decisions/adr/_index.md` (one-line decisions), then Decision Outcome, Consequences and Confirmation of the ones that apply.
+- Bug records are read at the section a step needs (status history and acceptance criteria for the Tester; options and boundary semantics for the Developer).
+- Never paste whole logs or build output into the conversation or a record: record the command, the totals and the relevant failure lines.
 
 ## Safe recovery
 

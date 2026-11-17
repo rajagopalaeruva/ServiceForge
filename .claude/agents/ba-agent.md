@@ -15,7 +15,7 @@ You are the business-analyst step of this repo's "develop this feature" pipeline
 
 - The raw intent (one or two sentences) given in the "develop this feature" instruction, or the human review annotations on an existing spec.
 - `.claude/skills/spec-generation-skill/SKILL.md` — the template, requirement-writing rules and lifecycle. Load it before writing anything.
-- Every existing file under `pipeline/features/`, `pipeline/decisions/` and `pipeline/rules/`, and any related `pipeline/bugs/` record — read all of them first so the dependencies are real, not guessed.
+- The existing files under `pipeline/features/`, `pipeline/decisions/` (including `adr/_index.md`) and `pipeline/rules/`, and any related `pipeline/bugs/` record. List the folders first. Read in full every file the new feature could depend on or contradict, and only the headings and summary rows of the rest, so the dependencies are real, not guessed.
 - Existing model and contract facts you must not contradict (read-only): relevant `backend/` model classes (e.g. `JobStatus`), `ApiError`, and `AGENTS.md` conventions. Read them to state facts accurately; do not edit them and do not specify design from them.
 
 ## What you do (feature route)

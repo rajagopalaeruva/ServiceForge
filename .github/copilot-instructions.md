@@ -6,7 +6,7 @@ Read `AGENTS.md` at the repo root first — it is the tool-agnostic entry point 
 
 Any "develop this feature: `<intent>`" request must go through the four-step pipeline in `pipeline/orchestration.md` (BA → Architect → Developer → Tester). Do not jump straight to writing code for a new feature.
 
-Bug fixing adds to, rather than replaces, the existing feature roles and is owned by the bug agent. Follow that document's bug-fix route using a linked record under `pipeline/bugs/` (template: `_template.md`): bug-agent intake, triage, reproduction, analysis and fix proposal; human approval; Tester failing regression; Developer implementation; Tester verification; bug-agent preventive action and closure. The Developer owns technical decisions; the Tester owns verification evidence. Documentation-only approval does not authorize a code fix.
+Bug fixing adds to, rather than replaces, the feature roles and is owned by the bug agent. Follow that document's bug-fix route using a linked record under `pipeline/bugs/`.
 
 ## Role definitions
 
@@ -14,7 +14,7 @@ The BA, Architect, Developer, Tester and Bug roles are defined in full under `.c
 
 ## Skills
 
-Load `.claude/skills/build-code-skill/SKILL.md` before writing backend or frontend code — it has the package layout, DI style, REST conventions, and Angular conventions this repo expects. `.claude/skills/spec-generation-skill/SKILL.md` applies to the BA role, `.claude/skills/adr-generation-skill/SKILL.md` to the Architect role, and `.claude/skills/migration-safety-skill/SKILL.md` to data-model changes.
+Load `.claude/skills/build-code-skill/SKILL.md` before writing backend or frontend code — it has the package layout, DI style, REST conventions, error handling, test commands and safe-running rules. `.claude/skills/spec-generation-skill/SKILL.md` applies to the BA role, `.claude/skills/adr-generation-skill/SKILL.md` to the Architect role, `.claude/skills/test-verification-skill/SKILL.md` to the Tester role, and `.claude/skills/migration-safety-skill/SKILL.md` to data-model changes.
 
 ## Conventions to always respect
 

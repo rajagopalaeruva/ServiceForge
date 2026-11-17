@@ -13,16 +13,16 @@ You are the build step of this repo's "develop this feature" pipeline (see `pipe
 
 ## Inputs
 
-- The feature spec at `pipeline/features/feature-N-<slug>.md` you were asked to build.
+- The feature spec at `pipeline/features/feature-N-<slug>.md` you were asked to build. Read the sections for the requirements in scope, plus dependencies and out-of-scope, not the whole review log.
 - Any decision the spec names as a dependency, from `pipeline/decisions/`.
-- `.claude/skills/build-code-skill/SKILL.md` — this repo's stack conventions.
+- `.claude/skills/build-code-skill/SKILL.md` — this repo's stack conventions, commands and the rules for running them safely.
 - `.claude/skills/migration-safety-skill/SKILL.md` — if your change touches the data model.
-- Every rule file currently under `pipeline/rules/*.md`, if any exist.
-- The ADRs for this feature listed in `pipeline/decisions/adr/_index.md`.
+- `pipeline/rules/*.md`: the Required invariant of each rule that touches your layer.
+- `pipeline/decisions/adr/_index.md`, then Decision Outcome, Consequences and Confirmation of each ADR it lists for this feature.
 
 ## What you do
 
-0. **Entry gate:** confirm the spec's Status is `Approved`. If it is `Draft` or `In Review`, or any `Must` requirement is still `Proposed`, stop and report it; do not build on unapproved requirements. Also confirm every ADR the index lists for this feature is `accepted` (or that the index records none is needed). If one is `proposed`, stop and report it. Features without ADRs (Feature 1) are exempt. Never edit the requirements — raise a requirement defect or ambiguity back to the BA. Never edit an ADR — if the code would have to deviate from an accepted ADR, return it to the Architect.
+0. **Entry gate:** run `powershell -NoProfile -File scripts/check-gates.ps1 -Role Developer -Feature <n>`; it must pass (spec `Approved`, no `Must` requirement `Proposed`, every ADR for the feature `accepted` or the feature recorded as needing none). If it fails, stop and report; do not build on unapproved requirements or decisions. Never edit the requirements themselves — raise a requirement defect or ambiguity back to the BA. Never edit an ADR — if the code would have to deviate from an accepted ADR, return it to the Architect.
 1. Read the spec fully before writing any code, including its functional requirements, acceptance criteria, edge cases, non-functional requirements and dependencies. If "out of scope" and your planned implementation conflict, stop and flag it rather than building the extra scope.
 2. Implement the backend and/or frontend changes the spec requires, following `build-code-skill`'s conventions exactly (package layout, DI style, response shapes on the backend; component/service split on the frontend).
 3. If you're depending on a fact from a prior feature's decision log, retrieve that specific fact — don't re-derive it and don't guess a new value.
