@@ -2,13 +2,13 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Approved (baselined v1.0, 2026-11-12). Implementation not started. |
-| **Version** | 1.0 |
+| **Status** | Approved (v2.0 baselined 2026-11-17; v1.0 was approved 2026-11-12). Implementation not started. |
+| **Version** | 2.0 |
 | **One-line intent** | Check available stock and reserve requested parts for an existing scheduled job. |
 | **Depends on** | Feature 1, *Decision: buffered interval detection* in `pipeline/decisions/feature-1-decisions.md` — a booked job occupies `[start, end + 45 minutes)` and exactly 45 minutes between jobs is allowed. Feature 2 treats that committed booked slot as read-only. It also relies on the Feature 1 job model (`JobStatus.SCHEDULED`) and the `pipeline/rules/booking-conflicts.md` rule. See section 3. |
 | **In scope** | A stock view of seeded, in-memory parts and an all-or-nothing reservation of one or more parts, in whole-number quantities, against one existing `SCHEDULED` job, reachable from the existing technician calendar. Repeat reservations for the same job, duplicate-part aggregation, deterministic validation and error handling, and a guarantee that stock never goes negative. Details in sections 4–8. |
 | **Out of scope** | Creating, editing, rescheduling or cancelling jobs; any change to Feature 1's booking or 45-minute buffer rules; **releasing, editing or cancelling a reservation**, including automatic release when a job is completed or cancelled (the next obvious feature); **time-aware stock** (holding parts for a time window, or expiring reservations — deferred, see D-1); editing or replenishing stock, low-stock alerts, purchasing and supplier workflows; authentication and authorisation; persistent storage. |
-| **Definition of Done** | Every `Must` acceptance criterion (AC-1 to AC-20 and AC-22) passes; every `Must` edge case (EC-n) behaves as specified; the existing Feature 1 test suite passes unchanged; no `Must` requirement remains `Proposed`; and each criterion is traced to a test in section 11. |
+| **Definition of Done** | Every `Must` acceptance criterion (AC-1 to AC-20 and AC-22) passes. AC-1 to AC-17 and AC-22 are verified by automated tests. AC-18 to AC-20 (the user interface) are verified by a recorded manual walkthrough performed by a named human until a frontend test runner is adopted by a recorded decision. Every `Must` edge case (EC-n) behaves as specified; the existing Feature 1 test suite passes unchanged (AC-16, traced to the existing Feature 1 test classes); no `Must` requirement remains `Proposed`; and each criterion is traced to a test, or to the walkthrough record, in section 11. |
 
 ## 1. Business context
 
@@ -85,7 +85,7 @@
 
 ## 6. Acceptance criteria
 
-Seed data is from A-1. "Technician calendar" means the Feature 1 listing. All rejections also mean "no stock or reservation changes".
+Seed data is from A-1. "Technician calendar" means the Feature 1 listing. All rejections also mean "no stock or reservation changes". Verification method: AC-1 to AC-17 and AC-22 by automated tests; AC-18 to AC-20 (user interface) by a recorded manual walkthrough performed by a named human, because the frontend has no test runner (see the Definition of Done and M-3).
 
 | ID | Scenario | Verifies | Priority |
 |---|---|---|---|
@@ -150,7 +150,7 @@ Seed data is from A-1. "Technician calendar" means the Feature 1 listing. All re
 |---|---|---|---|---|
 | M-1 | Rejection integrity | Share of rejected requests that leave stock and reservations unchanged | 100% | AC-5, AC-6, AC-9 to AC-13 and EC-11 in the test run |
 | M-2 | Stock invariant violations | Count of observed negative or over-reserved quantities in the concurrency test | 0 | AC-17 |
-| M-3 | Criterion coverage | Share of `Must` acceptance criteria with at least one automated test | 100% | Traceability matrix, Test column |
+| M-3 | Criterion coverage | Share of `Must` acceptance criteria verified: by at least one automated test for AC-1 to AC-17 and AC-22, and by a recorded manual walkthrough for AC-18 to AC-20 | 100% | Traceability matrix, Test column; walkthrough record |
 | M-4 | Feature 1 regression | Number of existing Feature 1 tests that fail | 0 | AC-16 |
 | M-5 | Reservation effort | Number of UI interactions from the technician calendar to a confirmed reservation | 5 or fewer (choose job, choose part, enter quantity, submit, read confirmation) | Walk-through |
 | M-6 | Response time | 95th percentile response time (NFR-3) | 500 ms or less | NFR-3 test |
@@ -214,15 +214,20 @@ Test and Code columns are filled in by the Tester and Developer.
 | RV-6 | Q-6 / EC-2 | Confirm rejection of `2.0` and `"2"`. | BA-agent | Yes (reviewer). EC-2 stands. | Resolved |
 | RV-7 | Q-7 / section 3 | Confirm the reading of "respect a booked slot". | BA-agent | Keep the simple reading; time-aware stock is deferred and recorded as D-1 to D-3 in section 10. | Resolved |
 | RV-8 | Definition of Done | The earlier Definition of Done item 9 (Feature 1 unchanged) is now AC-16 / FR-18, labelled as a regression check. Confirm. | BA-agent | Accepted with the approval of the whole document (reviewer, 2026-11-12). | Resolved |
+| RV-9 | Definition of Done, M-3, section 6 (v2.0 change request) | The plan review (pipeline/plans/feature-2-plan.md, RV-6 and RV-26) found that AC-18 to AC-20 cannot pass by automated test while the frontend has no test runner, so the v1.0 Definition of Done and M-3 cannot be met as written. The human chose a change request over adding a test runner or an exception. Changed in v2.0: AC-18 to AC-20 are verified by a recorded manual walkthrough by a named human, and AC-16 is traced to the existing Feature 1 test classes. No acceptance criterion, requirement or scope changed. | BA-agent, on the human's instruction (2026-11-17) | Approved by the human on 2026-11-17 ("approve spec v2.0"). | Resolved |
 
 **Sign-off.** The document may move to `Approved` only when every `RV-n` is `Resolved` or `Rejected` and the human reviewer has signed below.
 
 | Role | Name | Decision (Approve / Approve with changes / Reject) | Date |
 |---|---|---|---|
-| Business reviewer | Rajagopal Aeruva | Approve | 2026-11-12 |
-| Technical reviewer | Rajagopal Aeruva | Approve | 2026-11-12 |
+| Business reviewer (v1.0) | Rajagopal Aeruva | Approve | 2026-11-12 |
+| Technical reviewer (v1.0) | Rajagopal Aeruva | Approve | 2026-11-12 |
+| Business reviewer (v2.0) | Rajagopal Aeruva | Approve | 2026-11-17 |
+| Technical reviewer (v2.0) | Rajagopal Aeruva | Approve | 2026-11-17 |
 
-Sign-off note: approval was given by the reviewer in chat on 2026-11-12 ("It's good and approved it") and recorded here by the assistant on that instruction. The same person holds both reviewer roles. Name taken from the repository commit author.
+Sign-off note (v2.0): approval was given by the reviewer in chat on 2026-11-17 ("approve spec v2.0") and recorded here by the assistant on that instruction. The same person holds both reviewer roles. Name as in the v1.0 sign-off.
+
+Sign-off note (v1.0): approval was given by the reviewer in chat on 2026-11-12 ("It's good and approved it") and recorded here by the assistant on that instruction. The same person holds both reviewer roles. Name taken from the repository commit author.
 
 ## 13. Change log
 
@@ -233,6 +238,8 @@ Sign-off note: approval was given by the reviewer in chat on 2026-11-12 ("It's g
 | 0.3 | 2026-11-12 | BA agent | Restructured into the full requirements format (stories, requirements, acceptance criteria, edge cases, NFRs, metrics, traceability, review log). Kept all earlier decisions. Added concurrency (FR-14), error precedence (FR-12), reservation read access (FR-17), seed data (A-1) and the dependency note, each marked `Proposed` pending review. |
 | 0.4 | 2026-11-12 | BA agent | Recorded reviewer answers to Q-1 to Q-7 (all accepted); FR-12, FR-14, FR-17, A-1 and A-4 are now Confirmed. Added deferred decisions D-1 to D-3 (time-aware stock, release, buffer-based parts lead time) and named time-aware stock in Out of scope. Status stays In Review: RV-8 and the sign-off table are still open. |
 | 1.0 | 2026-11-12 | BA agent, on reviewer instruction | Reviewer approved the document. RV-8 resolved, A-5 confirmed, sign-off recorded, status set to Approved and baselined at v1.0. Further changes follow change control (new major version, re-approval). |
+| 2.0 | 2026-11-17 | BA agent, on the human's instruction | Change request RV-9: Definition of Done and M-3 now verify AC-18 to AC-20 by a recorded manual walkthrough by a named human (no frontend test runner), and trace AC-16 to the existing Feature 1 test classes; verification-method sentence added to section 6; sign-off table gains v2.0 rows. No requirement, acceptance criterion or scope changed. Status In Review until the human re-approves. |
+| 2.0 | 2026-11-17 | BA agent, on the human's instruction | Human approved v2.0 ("approve spec v2.0"). RV-9 resolved, v2.0 sign-off recorded, status set to Approved and baselined at v2.0. Further changes follow change control (new major version, re-approval). |
 
 ## Artifacts this feature touches
 <filled in later, by the developer and tester agents>
