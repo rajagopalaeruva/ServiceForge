@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Verified (T-10 evidence in section 14; v2.0 baselined 2026-11-17; v1.0 was approved 2026-11-12). Plan not Done: T-11 is open. |
+| **Status** | Verified (T-10 evidence in section 14; v2.0 baselined 2026-11-17; v1.0 was approved 2026-11-12). Plan Done and merge approved 2026-11-17 (plan section 6 and 6.1). |
 | **Version** | 2.0 |
 | **One-line intent** | Check available stock and reserve requested parts for an existing scheduled job. |
 | **Depends on** | Feature 1, *Decision: buffered interval detection* in `pipeline/decisions/feature-1-decisions.md` — a booked job occupies `[start, end + 45 minutes)` and exactly 45 minutes between jobs is allowed. Feature 2 treats that committed booked slot as read-only. It also relies on the Feature 1 job model (`JobStatus.SCHEDULED`) and the `pipeline/rules/booking-conflicts.md` rule. See section 3. |
@@ -193,12 +193,12 @@ Test and Code columns are filled in by the Tester and Developer. The Test column
 
 | Story | Requirements | Acceptance criteria | Edge cases | Test | Code |
 |---|---|---|---|---|---|
-| US-1 | FR-1, FR-2, FR-16 | AC-1, AC-19, AC-22 | — | AC-1 (Feature2PartsHttpPart1Test), AC-22 (Feature2RestartHttpTest); AC-19 by recorded walkthrough, Pass (14.4) | pending |
-| US-2 | FR-3, FR-4, FR-6, FR-7, FR-8, FR-10, FR-14, FR-15, FR-16 | AC-2 to AC-7, AC-17, AC-18, AC-19 | EC-4, EC-8 | AC-2 to AC-5 (Feature2PartsHttpPart1Test); AC-6, AC-7, AC-17, EC-8 (PartsReservationAtomicityHttpTest); EC-4 (Feature2PartsHttpPart1Test); AC-18 (SCHEDULED jobs only, RV-31), AC-19 by recorded walkthrough, Pass (14.4) | pending |
-| US-3 | FR-9, FR-14 | AC-8, AC-17 | EC-6, EC-8 | AC-8, AC-17, EC-6, EC-8 (PartsReservationAtomicityHttpTest) | pending |
-| US-4 | FR-4, FR-5, FR-7, FR-11, FR-12, FR-16 | AC-5 to AC-7, AC-9 to AC-14, AC-20 | EC-1 to EC-5, EC-7, EC-9, EC-11 | AC-9 to AC-15, EC-1 to EC-5, EC-9 (Feature2PartsHttpPart1Test); EC-7, EC-11 (PartsReservationAtomicityHttpTest); AC-20 by recorded walkthrough, Pass (14.4) | pending |
-| US-5 | FR-13, FR-18 | AC-15, AC-16 | EC-10 | AC-15 (Feature2PartsHttpPart1Test); EC-10 (Feature2RegressionHttpTest); AC-16: no tagged test, waived, Feature 1 classes run unchanged (see evidence) | pending |
-| US-6 | FR-17 | AC-21 | — | AC-21 (Feature2PartsHttpPart1Test) | pending |
+| US-1 | FR-1, FR-2, FR-16 | AC-1, AC-19, AC-22 | — | AC-1 (Feature2PartsHttpPart1Test), AC-22 (Feature2RestartHttpTest); AC-19 by recorded walkthrough, Pass (14.4) | `Part`, `MockDataStore` (seed, `partsSnapshot`), `PartsReservationService.listStock`, `PartsController` (GET /api/parts), `parts.service.ts`, `stock-view.component` |
+| US-2 | FR-3, FR-4, FR-6, FR-7, FR-8, FR-10, FR-14, FR-15, FR-16 | AC-2 to AC-7, AC-17, AC-18, AC-19 | EC-4, EC-8 | AC-2 to AC-5 (Feature2PartsHttpPart1Test); AC-6, AC-7, AC-17, EC-8 (PartsReservationAtomicityHttpTest); EC-4 (Feature2PartsHttpPart1Test); AC-18 (SCHEDULED jobs only, RV-31), AC-19 by recorded walkthrough, Pass (14.4) | `PartsReservationService.reserve`, `MockDataStore.applyReservation`, `ReserveRequest`, `ReservationLineRequest`, `ReservationResult`, `PartsController` (POST /api/jobs/{jobId}/reservations), `technician-calendar.component`, `app.component` |
+| US-3 | FR-9, FR-14 | AC-8, AC-17 | EC-6, EC-8 | AC-8, AC-17, EC-6, EC-8 (PartsReservationAtomicityHttpTest) | `PartsReservationService.reserve` (one private lock, line aggregation, validate then apply), `MockDataStore.applyReservation` |
+| US-4 | FR-4, FR-5, FR-7, FR-11, FR-12, FR-16 | AC-5 to AC-7, AC-9 to AC-14, AC-20 | EC-1 to EC-5, EC-7, EC-9, EC-11 | AC-9 to AC-15, EC-1 to EC-5, EC-9 (Feature2PartsHttpPart1Test); EC-7, EC-11 (PartsReservationAtomicityHttpTest); AC-20 by recorded walkthrough, Pass (14.4) | `ReserveRequest`, `ReservationLineRequest`, `StrictIntegerDeserializer`, `NotFoundException`, `ConflictException`, `ApiExceptionHandler`, `PartsReservationService.reserve`, `technician-calendar.component` (error display) |
+| US-5 | FR-13, FR-18 | AC-15, AC-16 | EC-10 | AC-15 (Feature2PartsHttpPart1Test); EC-10 (Feature2RegressionHttpTest); AC-16: no tagged test, waived, Feature 1 classes run unchanged (see evidence) | `PartsReservationService.reserve` (job fields never changed). Feature 1 code is only extended: `MockDataStore` (new state and methods), `ApiExceptionHandler` (two new handlers) |
+| US-6 | FR-17 | AC-21 | — | AC-21 (Feature2PartsHttpPart1Test) | `PartsReservationService.getJobReservations`, `MockDataStore.reservationsSnapshot`, `Reservation`, `PartsController` (GET /api/jobs/{jobId}/reservations) |
 
 ## 12. Review and approval
 
@@ -242,10 +242,16 @@ Sign-off note (v1.0): approval was given by the reviewer in chat on 2026-11-12 (
 | 2.0 | 2026-11-17 | BA agent, on the human's instruction | Human approved v2.0 ("approve spec v2.0"). RV-9 resolved, v2.0 sign-off recorded, status set to Approved and baselined at v2.0. Further changes follow change control (new major version, re-approval). |
 
 ## Artifacts this feature touches
-- T-5: `backend/src/main/java/com/serviceforge/controller/PartsController.java` (class `com.serviceforge.controller.PartsController`): `GET /api/parts`, `POST /api/jobs/{jobId}/reservations`, `GET /api/jobs/{jobId}/reservations`. Returns the model classes `Part`, `ReservationResult` and `Reservation`; no new DTO. Entries for T-1 to T-4 and the tests are not yet listed.
-- T-6: frontend rontend/src/app/models/part.model.ts, rontend/src/app/services/parts.service.ts (the only HTTP service for parts), rontend/src/app/stock-view/stock-view.component.{ts,html,css}; rontend/src/app/app.module.ts (declares StockViewComponent).
-- T-7: frontend rontend/src/app/technician-calendar/technician-calendar.component.{ts,html,css} (reserve action for SCHEDULED jobs only, confirmation step, error and success messages, labels), rontend/src/app/app.component.{ts,html} (parent calls StockViewComponent.loadParts() when the calendar emits eserved).
-<filled in later, by the developer and tester agents>
+- T-5: `backend/src/main/java/com/serviceforge/controller/PartsController.java` (class `com.serviceforge.controller.PartsController`): `GET /api/parts`, `POST /api/jobs/{jobId}/reservations`, `GET /api/jobs/{jobId}/reservations`. Returns the model classes `Part`, `ReservationResult` and `Reservation`; no new DTO.
+- T-1: `backend/src/main/java/com/serviceforge/model/Part.java`, `.../model/Reservation.java`, `.../data/MockDataStore.java` (seeded catalogue and per-job reservation state; snapshot reads; extended, Feature 1 members unchanged), `.../service/PartsReservationService.java` (guarded component, private `ReentrantLock`; `listStock`, `getJobReservations`).
+- T-2: `backend/src/main/java/com/serviceforge/exception/NotFoundException.java` and `.../exception/ConflictException.java` (new package `com.serviceforge.exception`), `.../controller/ApiExceptionHandler.java` (404 and 409 handlers added; Feature 1 mappings unchanged).
+- T-3: `backend/src/main/java/com/serviceforge/dto/ReserveRequest.java`, `.../dto/ReservationLineRequest.java`, `.../dto/StrictIntegerDeserializer.java` (applied to `quantity` only, ADR-005).
+- T-4: `backend/src/main/java/com/serviceforge/service/PartsReservationService.java` (`reserve`), `.../model/ReservationResult.java`, `.../data/MockDataStore.java` (`applyReservation`, public; called only under the service lock by convention, not enforced by Java).
+- Developer's unit tests (T-1 to T-4): `backend/src/test/java/com/serviceforge/service/PartsReservationServiceTest.java`, `.../controller/ApiExceptionHandlerNotFoundConflictTest.java`, `.../dto/ReserveRequestTest.java`.
+- Independent and Tester tests (T-v1, T-8, T-8b, T-9), all under `backend/src/test/java/com/serviceforge/controller/`: `Adr005JacksonPremiseTest`, `Feature2PartsHttpPart1Test`, `PartsReservationAtomicityHttpTest`, `Feature2RegressionHttpTest`, `Feature2NonFunctionalHttpTest`, `Feature2RestartHttpTest`.
+- T-6: `frontend/src/app/models/part.model.ts`, `frontend/src/app/services/parts.service.ts` (the only HTTP service for parts), `frontend/src/app/stock-view/stock-view.component.{ts,html,css}`, `frontend/src/app/app.module.ts` (declares `StockViewComponent`).
+- T-7: `frontend/src/app/technician-calendar/technician-calendar.component.{ts,html,css}` (reserve action for `SCHEDULED` jobs only, confirmation step, error and success messages, labels), `frontend/src/app/app.component.{ts,html}` (the parent calls `StockViewComponent.loadParts()` when the calendar emits `reserved`).
+- Decision log: `pipeline/decisions/feature-2-decisions.md`.
 
 ## 14. Test evidence (T-10, Tester)
 
@@ -256,11 +262,11 @@ Status of this section: automated results, live check and the recorded walkthrou
 | Field | Content |
 |---|---|
 | Gate | `powershell -NoProfile -File scripts/pipeline-status.ps1 -Feature 2`: Gate PASS; T-7 Built, T-9 Verified; T-10 ready |
-| Code state | Commit b5aba7e and uncommitted changes (Feature 2 work is not committed) |
+| Code state | Commit d1ea54a and uncommitted changes (Feature 2 work is not committed) |
 | Compile | `mvn -q test-compile` in `backend/`: exit 0 |
 | Test | `mvn test` in `backend/` (run after the compile, as a separate step): 181 run, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS |
 | Traceability | `powershell -NoProfile -File scripts/check-traceability.ps1 -Feature 2 -Waive AC-16,AC-18,AC-19,AC-20`: 33 IDs, 29 with a tagged test, 4 waived (AC-16, AC-18, AC-19, AC-20); TRACEABILITY OK, exit 0 |
-| Feature 1 classes | `BookingOverlapRegressionTest` (14), `TechnicianAvailabilityServiceTest` (3) and `ValidationErrorContractRegressionTest` (11) ran and passed; `git status` shows no modification to them against HEAD b5aba7e. The diff against the plan's baseline commit is the T-9 record and was not repeated here. |
+| Feature 1 classes | `BookingOverlapRegressionTest` (14), `TechnicianAvailabilityServiceTest` (3) and `ValidationErrorContractRegressionTest` (11) ran and passed; `git status` shows no modification to them against HEAD d1ea54a. The diff against the plan's baseline commit is the T-9 record and was not repeated here. |
 
 Per ID (all pass in the run above; the test class holds the tagged test):
 
@@ -321,13 +327,13 @@ Start from a fresh backend start so that stock is the seed (12, 25, 6, 3, 0). Re
 |---|---|---|---|---|---|
 | 1 | Stock view (US-1, AC-19) | The stock view lists the 5 parts with their available quantities (12, 25, 6, 3, 0), and shows 0 for Refrigerant valve. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. The owner saw the initial display. |
 | 2 | AC-18, SCHEDULED jobs only | In the technician calendar, each `SCHEDULED` job offers a reserve action; choosing it shows the part and quantity form for that job. (Non-`SCHEDULED` half: T-11 code review, see 14.3.) | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. PASS for SCHEDULED jobs: the reserve action is available from the UI. The non-SCHEDULED half could not be tested in the UI, which has no way to complete or cancel a job or to show such records. The owner says it can be tested once such an option exists in the UI and backend. Follow-up, consistent with RV-31; still pending the T-11 code review of the status condition. |
-| 3 | AC-19 | After a successful reservation, a confirmation names the job and the quantities, and the stock view shows the reduced availability without reloading the page. | X | | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. The stock view refreshed automatically after reserving parts on a `SCHEDULED` job (FR-16), and the owner received a confirmation naming the job and quantities. The exact message text was not reported. |
-| 4 | AC-20 | A rejected reservation (for example 4 Thermostats, or any quantity of Refrigerant valve) shows the error message from the server, and the stock view is unchanged. | X | | Reported by the owner in chat: requesting more parts than available was rejected and stock was not reduced. The owner did not state the message text shown. |
+| 3 | AC-19 | After a successful reservation, a confirmation names the job and the quantities, and the stock view shows the reduced availability without reloading the page. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. The stock view refreshed automatically after reserving parts on a `SCHEDULED` job (FR-16), and the owner received a confirmation naming the job and quantities. The exact message text was not reported. |
+| 4 | AC-20 | A rejected reservation (for example 4 Thermostats, or any quantity of Refrigerant valve) shows the error message from the server, and the stock view is unchanged. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction: requesting more parts than available was rejected and stock was not reduced. The owner did not state the message text shown. |
 | 5 | NFR-5, labels | Each form control (part, quantity, submit and cancel or confirm) has a visible label that a screen reader or the accessibility inspector reports. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. Labels: PASS. |
-| 6 | NFR-5, keyboard | Open the form, choose a part, enter a quantity, submit and read the result using only Tab, Shift+Tab, Enter, Space and arrow keys. | X | | Reported by the owner in chat: the flow can be done with the keyboard. The owner did not mention whether focus moves into the form on open (see 14.5). |
+| 6 | NFR-5, keyboard | Open the form, choose a part, enter a quantity, submit and read the result using only Tab, Shift+Tab, Enter, Space and arrow keys. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction: the flow can be done with the keyboard. The owner did not mention whether focus moves into the form on open (see 14.5). |
 | 7 | NFR-5, announced messages | The confirmation and the error message are announced (for example by a screen reader, or role `status` or `alert` visible in the inspector). | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. Announced messages: PASS (owner's words: 'able to do'). |
 | 8 | M-5, interaction count | Count the interactions from the calendar to a read confirmation (choose job, choose part, enter quantity, submit, read confirmation). Write the number: ____ . Pass if 5 or fewer. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. PASS: fewer than 5 (owner's words: 'less than 5'). No exact number was reported, so the blank above is left unfilled. |
-| 9 | M-1 | After each rejected request in the run (item 4), the stock view and the job's reservations are the same as before the request. | X | | Reported by the owner in chat, UI side: stock was not reduced after a rejected request. The job's reservations were not reported. |
+| 9 | M-1 | After each rejected request in the run (item 4), the stock view and the job's reservations are the same as before the request. | X | | Reported by the owner in chat, UI side, recorded by the assistant on the owner's instruction: stock was not reduced after a rejected request. The job's reservations were not reported. |
 
 Source of the recorded results: reported by the owner in chat, recorded by the assistant on the owner's instruction. `X` marks a result the owner reported as PASS. No result is inferred.
 
@@ -350,3 +356,5 @@ Human sign-off: Rajagopal Aeruva, approved by Rajagopal Aeruva on 2026-11-17; re
 | `npm run build` | Not run in T-10 (the T-7 done check); the walkthrough's `npm start` will show a compile error if there is one. |
 
 Sign-off state: T-10 Verified and spec Status Verified, set by the Tester after the owner's sign-offs in 14.3 and 14.4. Not set: plan Done (T-11 is open).
+
+Update (2026-11-17, after T-11): the plan is Done and the merge was approved by Rajagopal Aeruva; see the plan's section 6, 6.1 and change-log row 0.5. The statements above that T-11 is open describe the state at the time of T-10 and are kept as the record.
