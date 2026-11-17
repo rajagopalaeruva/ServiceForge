@@ -11,3 +11,6 @@ frontend/.angular/
 .DS_Store
 *.log
 .idea/
+
+# Personal Kiro steering (holds the owner's local notes-vault path); kept locally, not shared
+.kiro/steering/

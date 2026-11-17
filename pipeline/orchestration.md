@@ -112,7 +112,7 @@ Scripts under `scripts/` (PowerShell; run with `powershell -NoProfile -File scri
 
 | Script | Use |
 |---|---|
-| `pipeline-status.ps1 -Feature N` | Current phase, owner, who it is waiting on, next gate result and next action |
+| `pipeline-status.ps1 -Feature N` | Current phase, owner, who it is waiting on, next gate result and next action; with a plan, task counts by status, tasks in progress, and tasks ready to start |
 | `check-gates.ps1 -Role <Architect\|Planner\|Developer\|Tester> -Feature N` | Entry gate: spec status, no `Must` requirement `Proposed`, ADR statuses, and (Developer, Tester) the plan status |
 | `check-plan.ps1 -Feature N` | Plan coverage rule: every `Must` FR and ADR covered, owners and done checks present, no dependency cycle |
 | `check-traceability.ps1 -Feature N` | Lists `Must` acceptance criteria and all edge cases that have no test tagged `F<N>_AC_<n>` / `F<N>_EC_<n>` |

@@ -33,6 +33,54 @@ function Get-StatusWord {
     return $null
 }
 
+function Write-Tasks {
+    # Task-level progress from the plan: counts by status, tasks in progress, and tasks ready to start
+    # (status Todo, every dependency Built or Verified).
+    $tasks = New-Object System.Collections.Generic.List[object]
+    foreach ($line in [System.IO.File]::ReadAllLines($script:plan.FullName)) {
+        if ($line -match '^\|\s*(T-[\w]+)\s*\|') {
+            $cells = @($line.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+            if ($cells.Count -ge 10) {
+                $deps = @($cells[3] -split '[,;\s]+' | Where-Object { $_ -match '^T-' })
+                $tasks.Add([pscustomobject]@{ Id = $cells[0]; Deps = $deps; Status = $cells[9] })
+            }
+        }
+    }
+    if ($tasks.Count -eq 0) { return }
+    $counts = ($tasks | Group-Object Status | Sort-Object Name | ForEach-Object { "$($_.Name) $($_.Count)" }) -join ', '
+    $done = @($tasks | Where-Object { $_.Status -eq 'Built' -or $_.Status -eq 'Verified' } | ForEach-Object { $_.Id })
+    $doing = @($tasks | Where-Object { $_.Status -eq 'Doing' } | ForEach-Object { $_.Id })
+    $ready = @($tasks | Where-Object { $_.Status -eq 'Todo' -and @($_.Deps | Where-Object { $done -notcontains $_ }).Count -eq 0 } | ForEach-Object { $_.Id })
+    Write-Output "Tasks         : $($tasks.Count) total ($counts)"
+    if ($doing.Count -gt 0) { Write-Output "In progress   : $($doing -join ', ')" }
+    $readyText = if ($ready.Count -gt 0) { $ready -join ', ' } else { 'none' }
+    Write-Output "Ready to start: $readyText"
+}
+
+function Write-Tasks {
+    # Task-level progress from the plan: counts by status, tasks in progress, and tasks ready to start
+    # (status Todo, every dependency Built or Verified).
+    $tasks = New-Object System.Collections.Generic.List[object]
+    foreach ($line in [System.IO.File]::ReadAllLines($script:plan.FullName)) {
+        if ($line -match '^\|\s*(T-[\w]+)\s*\|') {
+            $cells = @($line.Trim().Trim('|').Split('|') | ForEach-Object { $_.Trim() })
+            if ($cells.Count -ge 10) {
+                $deps = @($cells[3] -split '[,;\s]+' | Where-Object { $_ -match '^T-' })
+                $tasks.Add([pscustomobject]@{ Id = $cells[0]; Deps = $deps; Status = $cells[9] })
+            }
+        }
+    }
+    if ($tasks.Count -eq 0) { return }
+    $counts = ($tasks | Group-Object Status | Sort-Object Name | ForEach-Object { "$($_.Name) $($_.Count)" }) -join ', '
+    $done = @($tasks | Where-Object { $_.Status -eq 'Built' -or $_.Status -eq 'Verified' } | ForEach-Object { $_.Id })
+    $doing = @($tasks | Where-Object { $_.Status -eq 'Doing' } | ForEach-Object { $_.Id })
+    $ready = @($tasks | Where-Object { $_.Status -eq 'Todo' -and @($_.Deps | Where-Object { $done -notcontains $_ }).Count -eq 0 } | ForEach-Object { $_.Id })
+    Write-Output "Tasks         : $($tasks.Count) total ($counts)"
+    if ($doing.Count -gt 0) { Write-Output "In progress   : $($doing -join ', ')" }
+    $readyText = if ($ready.Count -gt 0) { $ready -join ', ' } else { 'none' }
+    Write-Output "Ready to start: $readyText"
+}
+
 function Write-Report {
     param($Phase, $Owner, $Human, $Next, $Gate)
     Write-Output "Feature $Feature : $script:slug"
@@ -42,6 +90,7 @@ function Write-Report {
     Write-Output "Waiting on    : $Human"
     if ($Gate) { Write-Output "Gate          : $Gate" }
     Write-Output "Next action   : $Next"
+    if ($script:plan) { Write-Tasks }
 }
 
 # ---- spec -----------------------------------------------------------------------------------------
@@ -125,6 +174,10 @@ switch ($script:specStatus) {
         exit 0
     }
     'Verified' {
+        if ($planStatus -eq 'Done') {
+            Write-Report '7 Review and merge (complete)' 'nobody' 'nobody' 'Feature merged. Start the next feature or a recorded follow-up.' $null
+            exit 0
+        }
         Write-Report '7 Review and merge' 'Developer prepares summary' 'HUMAN: approve merge' 'Open the change summary for human approval.' $null
         exit 0
     }
