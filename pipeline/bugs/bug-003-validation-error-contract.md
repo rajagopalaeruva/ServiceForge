@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Verified (2026-11-17). Awaiting preventive-action confirmation and closure. |
+| **Status** | Closed (2026-11-17) |
 | **Type** | Defect |
 | **Severity / reason** | S3 Minor — behaviour is rejected correctly with 400, but clients get no usable message and the response shape breaks the repo contract |
 | **Priority / reason** | P1 — Feature 2 (FR-11, NFR-2, AC-9, AC-10) requires HTTP 400 with `ApiError`, so this should be settled before Feature 2 is implemented |
@@ -118,7 +118,12 @@ The failure is the defect in section 2 (no `ApiError` on 400), not a setup probl
 - The test file was committed together with the fix, so no commit leaves the build red.
 
 ## 11. Preventive actions (CAPA)
-Pending: add `pipeline/rules/api-error-contract.md` (every 4xx uses `ApiError`); add AC-1 to AC-7 as permanent tests; record the cross-cutting handler decision in `pipeline/decisions/`.
+Recorded at close, 2026-11-17:
+- **New tests:** `ValidationErrorContractRegressionTest` (11 tests, named `BUG003_AC1` to `AC7`) is permanent and covers every acceptance criterion in section 9, including the 201/404/409 guards.
+- **New rule:** `pipeline/rules/api-error-contract.md` requires an `ApiError` body on every 4xx, centralised 400 mapping, and tests that use the full Spring context.
+- **Decision:** [ADR-004](../decisions/adr/ADR-004-map-errors-to-apierror-in-one-place.md) (accepted) records the central error mapping and the distinct exception types Feature 2 will use for 404 and 409.
+- **Requirement change (BA):** none needed; the requirement already existed in `AGENTS.md` and Feature 2 NFR-2.
+- **Open follow-up, not fixed here (F-3):** the 404/409 mappings in `JobController` still use generic `IllegalArgumentException` and `IllegalStateException`. Feature 2 does not reuse them (ADR-004). Replacing the Feature 1 mappings needs its own decision.
 
 ## 12. Artifacts and resolution
 **Implemented (Developer, 2026-11-17):**
@@ -130,7 +135,22 @@ Pending: add `pipeline/rules/api-error-contract.md` (every 4xx uses `ApiError`);
 **Developer's test run after the fix (Executed):** `mvn -B clean test` from `backend/`: 28 run, 0 failures, 0 errors (`BookingOverlapRegressionTest` 14, `ValidationErrorContractRegressionTest` 11, `TechnicianAvailabilityServiceTest` 3). This is not verification; the Tester verifies next.
 
 ## 13. Lessons learned and metrics
-Pending until closed.
+**Metrics**
+
+| Metric | Value |
+|---|---|
+| Reproducible | Yes (executed, three request types) |
+| Phase introduced / detected | Design/Code / Review (post-release) |
+| Found to approved | 2026-11-12 to 2026-11-17 (waiting on the human decision) |
+| Approved to verified | Same day, 2026-11-17 |
+| Reopens | 0 |
+| Tests added | 11 (8 failed before the fix, 3 guards) |
+| Files changed in application code | 1 new class; no existing class edited |
+
+**Lessons learned**
+- A convention that exists only as a sentence in `AGENTS.md` was never enforced. The rule file and the permanent tests now enforce it.
+- The first reproduction was against a running server; the regression had to use the full Spring context, because a hand-built controller test does not include application-wide handlers.
+- A bug that blocks the next feature (Feature 2) was worth settling before design review, because ADR-004 depended on it.
 
 ## 14. Status history
 | Date | From | To | By | Reason |
@@ -143,3 +163,4 @@ Pending until closed.
 | 2026-11-17 | Approved | Regression Reproduced | Tester | `ValidationErrorContractRegressionTest` fails on unfixed code for the expected reason (8 failures: 400 without `ApiError.message`); guards for 201/404/409 and the existing suites pass. Evidence in section 10 |
 | 2026-11-17 | Regression Reproduced | Implemented | Developer | `ApiExceptionHandler` added for the approved scope; `mvn -B clean test` shows 28 run, 0 failures. Rule `pipeline/rules/api-error-contract.md` added. Not yet verified by the Tester |
 | 2026-11-17 | Implemented | Verified | Tester | Regression, full suite (28 tests) and live requests pass for AC-1 to AC-7; evidence in section 10 |
+| 2026-11-17 | Verified | Closed | Bug agent role (assistant) | Preventive actions recorded (tests, rule, ADR-004); lessons and metrics added; Feature 1 known-issue link updated; F-3 left as a recorded follow-up |

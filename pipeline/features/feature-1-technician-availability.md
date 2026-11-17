@@ -19,6 +19,8 @@
 
 The original boilerplate intentionally shipped with an equality-only start-time check that did not satisfy the overlap-rejection Definition of Done. That defect was the first agent-native training exercise. Its fix preserves the travel-buffer policy in `pipeline/decisions/feature-1-decisions.md`.
 
+Related defect: [BUG-003](../bugs/bug-003-validation-error-contract.md) (request validation, malformed-body and bad-path-value errors returned Spring's default 400 body instead of `ApiError`), fixed and closed 2026-11-17 by a shared handler. The rule is in `pipeline/rules/api-error-contract.md`.
+
 Resolved and verified on 2026-11-11 as [BUG-001 - Booking overlap detection](../bugs/bug-001-booking-overlap.md). Jobs now reserve `[start, end + 45 minutes)`; exactly 45 minutes between jobs is allowed. The linked record preserves pre-fix failure evidence and passing regression results.
 
 ## Artifacts this feature touches
