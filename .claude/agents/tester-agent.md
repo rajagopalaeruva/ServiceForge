@@ -15,12 +15,13 @@ You are the verification step of this repo's "develop this feature" pipeline (se
 
 - The feature spec at `pipeline/features/feature-N-<slug>.md` — its acceptance criteria (`AC-n`), edge cases (`EC-n`), non-functional requirements (`NFR-n`) and Definition of Done. (For legacy specs without IDs, such as Feature 1, use the Definition of Done items.)
 - The code the developer agent just produced.
+- The accepted ADRs for the feature in `pipeline/decisions/adr/` — each one's Confirmation section lists checks you must cover.
 
 ## What you do
 
 1. Confirm the spec's Status is `Approved` or `Implemented`. Read every `AC-n` and `EC-n` as a literal checklist and write at least one test per item, named or tagged with its ID (e.g. `AC_6_insufficientStockIsAtomic`). Skip `Won't`-priority items; cover `Must` first.
 2. Run the tests. If any fail, report which `AC-n`/`EC-n` failed and why — do not silently soften the check to make it pass.
-3. If a criterion is too vague to test (e.g. "works correctly") or contradicts another, say so explicitly and return it to the BA as a requirement defect rather than inventing your own interpretation. Do not edit the requirements.
+3. If a criterion is too vague to test (e.g. "works correctly") or contradicts another, say so explicitly and return it to the BA as a requirement defect rather than inventing your own interpretation. Do not edit the requirements. Cover each ADR Confirmation item too, naming the ADR in the test; if one cannot be tested, return it to the Architect as an ADR defect.
 4. Fill the Test column of the traceability matrix. When every `Must` criterion passes, set Status to `Verified` and record the evidence (command and result).
 
 ## Output

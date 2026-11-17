@@ -10,7 +10,7 @@ Anyone — human or agent — can kick this off with a single instruction:
 
 That one line is the only input. Everything else below is how it gets turned into a shipped feature.
 
-## The three steps
+## The four steps
 
 ### 1 — BA (turns intent into a spec)
 
@@ -33,20 +33,39 @@ That one line is the only input. Everything else below is how it gets turned int
 
 Changes after `Approved` are change requests: the BA revises the spec, bumps the major version, logs the change, and the human re-approves before the Developer continues. The Developer and Tester do not edit requirements; they raise issues back to the BA.
 
-### 2 — Developer (turns the spec into code)
+### 2 — Architect (turns the approved spec into design decisions)
+
+- **Role definition:** `.claude/agents/architect-agent.md`
+- **Skill it loads:** `.claude/skills/adr-generation-skill/SKILL.md`
+- **What it must read first:** the approved spec, `AGENTS.md`, `build-code-skill`, every file under `pipeline/decisions/` (including earlier ADRs), `pipeline/rules/`, and any open bug record in the same area.
+- **Entry gate:** the spec's Status must be `Approved`. If not, stop and say so.
+- **What it does:** finds the decisions the spec forces that are worth recording (the significance test in the skill), compares at least two real options for each against the spec's requirement IDs and the repo constraints, and writes one ADR per decision in MADR format at `pipeline/decisions/adr/ADR-NNN-<slug>.md`. Each ADR names how it will be confirmed (`AC-`/`EC-`/`NFR-` IDs). It updates `pipeline/decisions/adr/_index.md`. If a feature needs no ADR, the index records that with the reason. Requirement gaps go back to the BA, not into an ADR.
+- **Output:** ADRs with status `proposed`, the updated index, and the list of decisions a human must make. The Architect never sets `accepted`. Feature 1 predates ADRs and is not retrofitted.
+
+#### ADR lifecycle
+
+`proposed → accepted` (or `rejected`), later `deprecated` or `superseded by ADR-NNN`.
+
+| Status | Set by | Meaning |
+|---|---|---|
+| proposed | Architect | Written with options and a recommendation; waiting for human review |
+| accepted | **Human only** (`decision-makers` and date in the ADR) | The Developer must build inside it |
+| rejected / deprecated / superseded | Human decides; Architect records | An accepted ADR is never edited. A change is a new ADR that supersedes it. |
+
+### 3 — Developer (turns the spec and ADRs into code)
 
 - **Role definition:** `.claude/agents/developer-agent.md`
 - **Skills it loads:** `.claude/skills/build-code-skill/SKILL.md` (stack conventions) and, if the change touches the data model, `.claude/skills/migration-safety-skill/SKILL.md`.
-- **Rules it must follow:** everything under `pipeline/rules/*.md` that exists at the time.
-- **Entry gate:** the spec's Status must be `Approved` (signed off by a human). If it is `Draft` or `In Review`, stop and say so.
-- **What it does:** implements the spec from step 1, in the backend and/or frontend as the spec requires, without expanding scope beyond what the spec says. It records which files implement which `FR-n` in the spec's traceability matrix, and sets Status `Implemented`.
+- **Rules it must follow:** everything under `pipeline/rules/*.md` that exists at the time, and every `accepted` ADR for the feature.
+- **Entry gate:** the spec's Status must be `Approved` (signed off by a human), and every ADR the index lists for the feature must be `accepted` (or the index must record that none is needed). If the spec is `Draft` or `In Review`, or an ADR is still `proposed`, stop and say so. Feature 1 has no ADRs and is exempt.
+- **What it does:** implements the spec from step 1 inside the ADRs from step 2, in the backend and/or frontend as the spec requires, without expanding scope beyond what the spec says. If the code would need to deviate from an accepted ADR, stop and return it to the Architect; do not edit the ADR. It records which files implement which `FR-n` in the spec's traceability matrix, and sets Status `Implemented`.
 - **Output:** working code, committed.
 
-### 3 — Tester (checks the code against the spec)
+### 4 — Tester (checks the code against the spec)
 
 - **Role definition:** `.claude/agents/tester-agent.md`
-- **What it does:** writes and runs tests against the acceptance criteria (`AC-n`) and edge cases (`EC-n`) in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do. Tests are named or tagged with the IDs they verify, and the traceability matrix's Test column is filled in.
-- **Output:** test results reported per `AC-n`/`EC-n`. If they fail, the loop returns to step 2, not step 1 — the spec doesn't change because the code didn't meet it. When every Must criterion passes, the Tester sets Status `Verified`. A criterion that cannot be tested goes back to the BA as a requirement defect.
+- **What it does:** writes and runs tests against the acceptance criteria (`AC-n`) and edge cases (`EC-n`) in the spec from step 1 — not against what the code happens to do, but against what it was supposed to do. It also covers the Confirmation items of each accepted ADR for the feature. Tests are named or tagged with the IDs they verify, and the traceability matrix's Test column is filled in.
+- **Output:** test results reported per `AC-n`/`EC-n`. If they fail, the loop returns to step 3, not step 1 — the spec doesn't change because the code didn't meet it. When every Must criterion passes, the Tester sets Status `Verified`. A criterion that cannot be tested goes back to the BA as a requirement defect. A Confirmation item that cannot be tested goes back to the Architect as an ADR defect.
 
 ## Safe recovery
 
@@ -54,7 +73,7 @@ If any step produces something that doesn't match its input (a spec with no Defi
 
 ## Human checkpoints
 
-A human must review and approve the output of step 1 (the spec) before step 2 starts — specs are cheap to correct, code is not. This is a hard gate, not a suggestion. The review is recorded in the spec itself: the human resolves each open `RV-n` annotation and `Q-n` question, then completes the sign-off table, which moves Status to `Approved`. The BA resolves annotations and re-submits until the human is satisfied. Everything else can run unattended unless something trips the safe-recovery condition above.
+A human must review and approve the output of step 1 (the spec) before step 2 starts, and the output of step 2 (the ADRs) before step 3 starts — specs and designs are cheap to correct, code is not. These are hard gates, not suggestions. The spec review is recorded in the spec itself: the human resolves each open `RV-n` annotation and `Q-n` question, then completes the sign-off table, which moves Status to `Approved`. The BA resolves annotations and re-submits until the human is satisfied. The ADR review is recorded in each ADR: the human sets `accepted` (or `rejected`), fills in `decision-makers`, and answers the open questions listed in `pipeline/decisions/adr/_index.md`. The Architect revises `proposed` ADRs until the human is satisfied. Everything else can run unattended unless something trips the safe-recovery condition above.
 
 ## Bug-fix route
 
@@ -76,13 +95,13 @@ Statuses: `New → Triaged → Reproduced → Analysed → Fix Proposed → Appr
 
 Record sections (see `pipeline/bugs/_template.md`): metadata (type, severity, priority, found-in, approval, related records); summary; expected and actual behaviour; reproduction and evidence; root cause analysis; impact and sweep; escape analysis; findings; fix options and recommendation; acceptance criteria; regression and verification evidence (use "not run" until executed; never invent evidence); preventive actions; artifacts and resolution; lessons learned and metrics; status history. BUG-001 uses the earlier format and is grandfathered.
 
-The Developer owns technical updates to decision logs and rules during implementation. The Tester owns verification evidence. The Bug agent owns the record's analysis, status history and closure. Return inaccurate technical documentation to the Developer rather than inventing decisions. Preserve the historical failure and superseded approach for training; do not erase them or mark planned behaviour as already implemented. The Developer adds a focused rule under `pipeline/rules/` when the bug exposes a reusable invariant and links it from the record. Rules describe required behaviour, not proof that existing code already complies.
+The Developer owns technical updates to decision logs and rules during implementation. The Tester owns verification evidence. The Bug agent owns the record's analysis, status history and closure. Return inaccurate technical documentation to the Developer rather than inventing decisions. Preserve the historical failure and superseded approach for training; do not erase them or mark planned behaviour as already implemented. The Developer adds a focused rule under `pipeline/rules/` when the bug exposes a reusable invariant and links it from the record. Rules describe required behaviour, not proof that existing code already complies. If a fix would change something an `accepted` ADR decided, route it to the Architect for a superseding ADR and human acceptance before implementation.
 
 ## Running this in each tool
 
-- **Claude Code:** the three role files under `.claude/agents/` are real Claude Code subagents (they have the frontmatter Claude Code expects). Say "develop this feature: `<intent>`" and Claude Code should route through them in order, per this document.
-- **GitHub Copilot:** use the matching prompt files in `.github/prompts/` (`ba-agent.prompt.md`, `developer-agent.prompt.md`, `tester-agent.prompt.md`) as slash commands, in the order above, or paste this document into a Copilot Chat session as context.
-- **Codex / any `AGENTS.md`-reading CLI agent:** `AGENTS.md` already points here. Give the same "develop this feature" instruction; the agent should read the three role files under `.claude/agents/` as plain markdown (the YAML header is harmless to ignore) and follow the same three steps.
-- **Anyone without an agent tool:** the three role files are readable specs. Do the three steps yourself, in order.
+- **Claude Code:** the four role files under `.claude/agents/` (BA, Architect, Developer, Tester) are real Claude Code subagents (they have the frontmatter Claude Code expects). Say "develop this feature: `<intent>`" and Claude Code should route through them in order, per this document.
+- **GitHub Copilot:** use the matching prompt files in `.github/prompts/` (`ba-agent.prompt.md`, `architect-agent.prompt.md`, `developer-agent.prompt.md`, `tester-agent.prompt.md`) as slash commands, in the order above, or paste this document into a Copilot Chat session as context.
+- **Codex / any `AGENTS.md`-reading CLI agent:** `AGENTS.md` already points here. Give the same "develop this feature" instruction; the agent should read the four role files under `.claude/agents/` as plain markdown (the YAML header is harmless to ignore) and follow the same four steps.
+- **Anyone without an agent tool:** the four role files are readable specs. Do the four steps yourself, in order.
 
 For bug fixes, use .claude/agents/bug-agent.md (or .github/prompts/bug-agent.prompt.md) for intake, analysis and the fix proposal, then the Tester, Developer and Tester role files in the order specified by the bug-fix route above, including the Tester step before implementation. This document is authoritative for ordering and checkpoints in every tool.

@@ -6,10 +6,11 @@ The above import brings in the tool-agnostic project rules. Everything below is 
 
 ## Subagents
 
-This repo defines three subagents under `.claude/agents/`, matching the roles in `pipeline/orchestration.md`:
+This repo defines five subagents under `.claude/agents/`, matching the roles in `pipeline/orchestration.md`:
 
 - `ba-agent` — turns a feature intent into a complete requirements spec (stories, requirements, acceptance criteria, edge cases, NFRs, metrics, traceability, review log) under `pipeline/features/`, and revises it from human annotations. It never approves its own work.
-- `developer-agent` — implements a human-**Approved** spec into working code, loading the relevant skills and rules.
+- `architect-agent` — turns a human-**Approved** spec into Architecture Decision Records (MADR) under `pipeline/decisions/adr/`: real options compared against the spec's requirement IDs, a recommendation, consequences and a confirmation. It never accepts its own ADRs and never edits requirements or code.
+- `developer-agent` — implements a human-**Approved** spec, inside the human-**accepted** ADRs, into working code, loading the relevant skills and rules.
 - `tester-agent` — writes and runs tests per acceptance criterion / edge case ID in the spec.
 - `bug-agent` — owns a bug record: triage, reproduction, root cause, impact, escape analysis, findings and fix options; never edits code or approves its own proposal.
 
@@ -19,8 +20,8 @@ Invoke them the way you'd invoke any Claude Code subagent, e.g.:
 
 ```
 "Develop this feature: <intent>" 
-→ Claude Code should route this through ba-agent, then developer-agent, then tester-agent,
-  per pipeline/orchestration.md — not write code directly.
+→ Claude Code should route this through ba-agent, then architect-agent, then developer-agent,
+  then tester-agent, per pipeline/orchestration.md — not write code directly.
 ```
 
 ## Skills
@@ -29,9 +30,10 @@ Skills live under `.claude/skills/<skill-name>/SKILL.md` (standard Claude Agent 
 
 - `build-code-skill` — backend + frontend stack conventions for this repo.
 - `spec-generation-skill` — how the BA agent turns intent into a feature spec.
+- `adr-generation-skill` — how the Architect agent turns an Approved spec into MADR-format ADRs.
 - `bug-analysis-skill` — how the bug agent triages, reproduces, root-causes and proposes fixes for a defect.
 - `migration-safety-skill` — how to evolve the mock data model without breaking existing consumers (there is no real database, but the same discipline applies to the in-memory model).
 
 ## Memory note for this repo
 
-Feature-by-feature decisions (the facts a later feature may need to retrieve) are logged under `pipeline/decisions/`, one file per feature — starting with `pipeline/decisions/feature-1-decisions.md`. Do not rely on conversation history alone to carry these facts forward; they are committed here specifically so they can be retrieved on demand instead of kept in context permanently.
+Feature-by-feature decisions (the facts a later feature may need to retrieve) are logged under `pipeline/decisions/`, one file per feature — starting with `pipeline/decisions/feature-1-decisions.md`. Design decisions made before building are ADRs under `pipeline/decisions/adr/` (start at `_index.md`). Do not rely on conversation history alone to carry these facts forward; they are committed here specifically so they can be retrieved on demand instead of kept in context permanently.

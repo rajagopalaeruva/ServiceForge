@@ -18,10 +18,11 @@ You are the build step of this repo's "develop this feature" pipeline (see `pipe
 - `.claude/skills/build-code-skill/SKILL.md` — this repo's stack conventions.
 - `.claude/skills/migration-safety-skill/SKILL.md` — if your change touches the data model.
 - Every rule file currently under `pipeline/rules/*.md`, if any exist.
+- The ADRs for this feature listed in `pipeline/decisions/adr/_index.md`.
 
 ## What you do
 
-0. **Entry gate:** confirm the spec's Status is `Approved`. If it is `Draft` or `In Review`, or any `Must` requirement is still `Proposed`, stop and report it; do not build on unapproved requirements. Never edit the requirements themselves — raise a requirement defect or ambiguity back to the BA.
+0. **Entry gate:** confirm the spec's Status is `Approved`. If it is `Draft` or `In Review`, or any `Must` requirement is still `Proposed`, stop and report it; do not build on unapproved requirements. Also confirm every ADR the index lists for this feature is `accepted` (or that the index records none is needed). If one is `proposed`, stop and report it. Features without ADRs (Feature 1) are exempt. Never edit the requirements — raise a requirement defect or ambiguity back to the BA. Never edit an ADR — if the code would have to deviate from an accepted ADR, return it to the Architect.
 1. Read the spec fully before writing any code, including its functional requirements, acceptance criteria, edge cases, non-functional requirements and dependencies. If "out of scope" and your planned implementation conflict, stop and flag it rather than building the extra scope.
 2. Implement the backend and/or frontend changes the spec requires, following `build-code-skill`'s conventions exactly (package layout, DI style, response shapes on the backend; component/service split on the frontend).
 3. If you're depending on a fact from a prior feature's decision log, retrieve that specific fact — don't re-derive it and don't guess a new value.
@@ -35,7 +36,7 @@ For feature work, working code, committed, plus the updated spec file's artifact
 
 - Does the implementation match the spec's "in scope" exactly, without absorbing "out of scope" items?
 - Does it follow `build-code-skill`'s stack conventions?
-- Does it respect every currently-active rule under `pipeline/rules/`?
+- Does it respect every currently-active rule under `pipeline/rules/` and every accepted ADR for the feature?
 - Can you explain, live, why you built it this way and not another way?
 
 ## Additional capability: bug fixes
