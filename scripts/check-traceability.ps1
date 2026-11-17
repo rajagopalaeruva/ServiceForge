@@ -13,18 +13,27 @@
     Must acceptance criteria and all edge cases are required. Should and Could are reported as warnings
     (failures with -Strict). Specs with no AC or EC rows (legacy, e.g. Feature 1) are skipped.
 
+    -Waive lists IDs that are expected to have no automated test (for example UI criteria while the frontend
+    has no test runner). A waived ID with no test is reported as WAIVED and does not fail the check; the human
+    sign-off for the waiver is recorded in the plan and in the spec's evidence. A waiver never hides a missing
+    test for any other ID.
+
     Exit code 0 = nothing required is missing, 1 = something required has no test. Nothing is modified.
 
 .EXAMPLE
     powershell -NoProfile -File scripts/check-traceability.ps1 -Feature 2
+    powershell -NoProfile -File scripts/check-traceability.ps1 -Feature 2 -Waive AC-18,AC-19,AC-20
 #>
 param(
     [Parameter(Mandatory)][int]$Feature,
-    [switch]$Strict
+    [switch]$Strict,
+    [string[]]$Waive = @()
 )
 
 . "$PSScriptRoot\_adr.ps1"
 $root = Get-RepoRoot
+# "powershell -File" passes -Waive AC-18,AC-19 as one string; accept both that and a real array.
+$Waive = @($Waive | ForEach-Object { $_ -split ',' } | ForEach-Object { $_.Trim() } | Where-Object { $_ -ne '' })
 
 $spec = Get-ChildItem -Path (Join-Path $root 'pipeline\features') -Filter "feature-$Feature-*.md" -File -ErrorAction SilentlyContinue |
     Select-Object -First 1
@@ -62,12 +71,15 @@ $testText = ($testFiles | ForEach-Object { [System.IO.File]::ReadAllText($_.Full
 # ---- report ----------------------------------------------------------------------------------------------
 $missingRequired = New-Object System.Collections.Generic.List[string]
 $missingOptional = New-Object System.Collections.Generic.List[string]
+$waived = New-Object System.Collections.Generic.List[string]
 $covered = 0
 
 foreach ($item in $items) {
     $pattern = "F$Feature[_-]$($item.Kind)[_-]$($item.Number)(?!\d)"
     if ($testText -match $pattern) {
         $covered++
+    } elseif ($Waive -contains $item.Id) {
+        $waived.Add($item.Id)
     } elseif ($item.Priority -eq 'Must') {
         $missingRequired.Add($item.Id)
     } else {
@@ -77,6 +89,7 @@ foreach ($item in $items) {
 
 Write-Output "Spec: $($spec.Name). IDs: $($items.Count). With a tagged test: $covered. Test files scanned: $($testFiles.Count)."
 if ($missingRequired.Count -gt 0) { Write-Output "FAIL: no tagged test for required: $($missingRequired -join ', ')" }
+if ($waived.Count -gt 0) { Write-Output "WAIVED (no automated test, needs recorded human sign-off): $($waived -join ', ')" }
 if ($missingOptional.Count -gt 0) { Write-Output "WARN: no tagged test for optional: $($missingOptional -join ', ')" }
 
 if ($missingRequired.Count -gt 0 -or ($Strict -and $missingOptional.Count -gt 0)) { exit 1 }

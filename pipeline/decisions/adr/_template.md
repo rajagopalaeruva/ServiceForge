@@ -57,6 +57,13 @@ Chosen option: "<option>", because <the decisive reason>.
 * Revisit when: <observable condition that should reopen this decision>
 * Open questions: <Q with a proposed default and an owner, or "None">
 
+## Design review
+
+Filled in by the Reviewer agent (design mode); the Architect writes each Resolution while the ADR is `proposed`. A human accepts only when no Blocker is open.
+
+| ID | Item | Severity | Comment | Raised by | Resolution | Status |
+|---|---|---|---|---|---|---|
+
 ## History
 
 | Date | Change | By |

@@ -60,6 +60,7 @@ Do **not** write an ADR for a choice the repo conventions already settle (constr
 
 - The **Architect agent** produces `proposed` ADRs only. **Only a human** sets `accepted` and fills in `decision-makers` and the decision date.
 - A `proposed` ADR may be edited freely by the Architect in response to review; record each change in its history table.
+- Before a human accepts, the **Reviewer agent** (design mode, `.claude/skills/review-skill/SKILL.md`) records questions and feedback as `DR-n` rows in the ADR's Design review table. The Architect revises and writes a resolution for each. A human does not accept an ADR with an open Blocker.
 - Once `accepted`, only the status line may change (to `deprecated` or `superseded by ADR-NNN`), and the index row follows.
 - The Developer must implement within every `accepted` ADR linked to the feature, and stops and returns to the Architect if the code would need to deviate. The Developer never edits an ADR.
 - The Tester covers each ADR's Confirmation items.
@@ -78,6 +79,7 @@ Each ADR cites requirement IDs in its front matter (`drivers`) and its Context. 
 - [ ] Confirmation names concrete `AC-`/`EC-`/`NFR-` IDs or a review item.
 - [ ] Revisit trigger present.
 - [ ] Status is `proposed`; `decision-makers` empty.
+- [ ] Every `DR-n` from the Reviewer has a resolution (or an explicit reason for none).
 - [ ] Open questions have a proposed default and an owner.
 - [ ] `_index.md` updated; ADR numbers unique and sequential.
 - [ ] No code, no requirement edits, no invented evidence.

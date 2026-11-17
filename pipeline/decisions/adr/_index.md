@@ -6,6 +6,8 @@ Statuses: `proposed`, `accepted`, `rejected`, `deprecated`, `superseded by ADR-N
 
 Read this index first. Open an ADR in full only when its one-line decision touches what you are building, and then read its Decision Outcome, Consequences and Confirmation.
 
+Every new ADR goes through design review (Reviewer agent, design mode) before a human accepts it. ADR-000 to ADR-005 were accepted by the human before that step existed (2026-11-17), have no Design review table, and are not retrofitted.
+
 ## Index
 
 | ADR | Title | Decision in one line | Status | Feature | Drivers (requirements) |
@@ -42,7 +44,7 @@ A feature appears here only when the Architect has recorded that it needs no ADR
 
 ## Developer gate
 
-The Developer may start Feature 2 only when every ADR above that applies to Feature 2 (ADR-001 to ADR-005) is `accepted`. ADR-000 is a process decision and does not gate a feature. Run `powershell -NoProfile -File scripts/check-gates.ps1 -Role Developer -Feature 2` to check this.
+The Developer may start Feature 2 only when every ADR above that applies to Feature 2 (ADR-001 to ADR-005) is `accepted` and the work plan `pipeline/plans/feature-2-plan.md` is `Approved`. ADR-000 is a process decision and does not gate a feature. Run `powershell -NoProfile -File scripts/check-gates.ps1 -Role Developer -Feature 2` to check this.
 
 ## Traceability note
 

@@ -4,17 +4,17 @@ Read `AGENTS.md` at the repo root first — it is the tool-agnostic entry point 
 
 ## The pipeline
 
-Any "develop this feature: `<intent>`" request must go through the four-step pipeline in `pipeline/orchestration.md` (BA → Architect → Developer → Tester). Do not jump straight to writing code for a new feature.
+Any "develop this feature: `<intent>`" request must go through the pipeline in `pipeline/orchestration.md` (summary in `pipeline/phases.md`): Requirements → ADR → Design review → Work plan → Build → Test → Review and merge. Start with `scripts/pipeline-status.ps1 -Feature N`. Do not jump straight to writing code for a new feature.
 
 Bug fixing adds to, rather than replaces, the feature roles and is owned by the bug agent. Follow that document's bug-fix route using a linked record under `pipeline/bugs/`.
 
 ## Role definitions
 
-The BA, Architect, Developer, Tester and Bug roles are defined in full under `.claude/agents/*.md`. They were written in Claude Code's subagent format (a small YAML header, then the role body) but the content is plain markdown — read and follow them the same way you'd follow any instruction file. Reusable slash-command versions of the same roles are in `.github/prompts/` if you'd rather invoke them that way.
+The Orchestrator, BA, Architect, Reviewer, Developer, Tester and Bug roles are defined in full under `.claude/agents/*.md`. They were written in Claude Code's subagent format (a small YAML header, then the role body) but the content is plain markdown — read and follow them the same way you'd follow any instruction file. Reusable slash-command versions of the same roles are in `.github/prompts/` if you'd rather invoke them that way.
 
 ## Skills
 
-Load `.claude/skills/build-code-skill/SKILL.md` before writing backend or frontend code — it has the package layout, DI style, REST conventions, error handling, test commands and safe-running rules. `.claude/skills/spec-generation-skill/SKILL.md` applies to the BA role, `.claude/skills/adr-generation-skill/SKILL.md` to the Architect role, `.claude/skills/test-verification-skill/SKILL.md` to the Tester role, and `.claude/skills/migration-safety-skill/SKILL.md` to data-model changes.
+Load `.claude/skills/build-code-skill/SKILL.md` before writing backend or frontend code — it has the package layout, DI style, REST conventions, error handling, test commands and safe-running rules. `.claude/skills/spec-generation-skill/SKILL.md` applies to the BA role, `.claude/skills/adr-generation-skill/SKILL.md` to the Architect role, `.claude/skills/review-skill/SKILL.md` to the Reviewer role, `.claude/skills/test-verification-skill/SKILL.md` to the Tester role, and `.claude/skills/migration-safety-skill/SKILL.md` to data-model changes.
 
 ## Conventions to always respect
 

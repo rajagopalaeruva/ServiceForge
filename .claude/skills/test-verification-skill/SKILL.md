@@ -18,13 +18,14 @@ Load `.claude/skills/build-code-skill/SKILL.md` too: it holds the commands and t
 
 | Test is for | Name starts with | Example |
 |---|---|---|
-| Feature acceptance criterion | `F<feature>_AC_<n>_` | `F2_AC_6_insufficientStockIsAtomic` |
-| Feature edge case | `F<feature>_EC_<n>_` | `F2_EC_8_lastUnitRaceGrantsExactlyOne` |
+| Feature acceptance criterion (independent HTTP test, written from the spec only) | `F<feature>_AC_<n>_` | `F2_AC_6_insufficientStockIsAtomic` |
+| Feature edge case (independent HTTP test) | `F<feature>_EC_<n>_` | `F2_EC_8_lastUnitRaceGrantsExactlyOne` |
+| Developer's own unit test for a task (service or request-type level) | `F<feature>U_AC_<n>_` or `F<feature>U_EC_<n>_` | `F2U_AC_6_aggregateIsAppliedAtomically` |
 | Feature non-functional requirement | `F<feature>_NFR_<n>_` | `F2_NFR_4_availablePlusReservedEqualsSeeded` |
 | ADR Confirmation item | `ADR<nnn>_` plus the IDs it names | `ADR001_AC_17_tenConcurrentRequests` (also tag `F2_AC_17`) |
 | Bug regression | `BUG<nnn>_AC<n>_` | `BUG003_AC1_blankCustomerNameReturns400…` |
 
-The feature prefix keeps `AC-1` of Feature 2 apart from `AC-1` of a bug record. A parameterised test carries the tag in the method name; one tag may be shared by the cases of one criterion. Put the matching ID in the display name or a comment when a table of cases covers several IDs.
+The feature prefix keeps `AC-1` of Feature 2 apart from `AC-1` of a bug record. The `U` in `F2U_` marks the Developer's own unit tests: `check-traceability.ps1` counts only `F<n>_` tags, so it proves the independent tests exist and is not satisfied by the Developer's tests. A parameterised test carries the tag in the method name; one tag may be shared by the cases of one criterion. Put the matching ID in the display name or a comment when a table of cases covers several IDs.
 
 ## Test style (backend)
 

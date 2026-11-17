@@ -22,7 +22,7 @@ npm start                    # serves http://localhost:4200
 
 ## The one rule every agent follows here
 
-**"Develop this feature" is a standing instruction, not a one-off prompt.** Whenever anyone (human or agent) says "develop this feature: <intent>", the work must go through the pipeline defined in **[`pipeline/orchestration.md`](pipeline/orchestration.md)** — BA → Architect → Developer → Tester, in that order, with the relevant skills and rules loaded dynamically. Do not skip straight to writing code.
+**"Develop this feature" is a standing instruction, not a one-off prompt.** Whenever anyone (human or agent) says "develop this feature: <intent>", the work must go through the pipeline defined in **[`pipeline/orchestration.md`](pipeline/orchestration.md)** (summary: [`pipeline/phases.md`](pipeline/phases.md)): Requirements → ADR → Design review → Work plan → Build → Test → Review and merge, coordinated by the Orchestrator agent, with a human approving at the gates listed there. Start with `scripts/pipeline-status.ps1 -Feature N`. Do not skip straight to writing code.
 
 Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and follows the [bug-fix route](pipeline/orchestration.md#bug-fix-route) in the same document, using one record per bug from `pipeline/bugs/_template.md`. Requirement gaps go to the BA's feature route. Analysis-only or documentation-only requests do not authorize a code fix.
 
@@ -31,14 +31,16 @@ Bug fixing is owned by the **bug agent** (`.claude/agents/bug-agent.md`) and fol
 | What | Where |
 |---|---|
 | The orchestration pipeline (tool-agnostic, read this first) | `pipeline/orchestration.md` |
-| Agent role definitions (BA / Architect / Developer / Tester / Bug) | `.claude/agents/*.md` — plain markdown with a small YAML header for Claude Code; readable as-is by any tool |
+| Agent role definitions (Orchestrator / BA / Architect / Reviewer / Developer / Tester / Bug) | `.claude/agents/*.md` — plain markdown with a small YAML header for Claude Code; readable as-is by any tool |
 | Skills (reusable how-to knowledge) | `.claude/skills/*/SKILL.md` |
 | Feature requirements specifications (one file per feature; template and lifecycle in `.claude/skills/spec-generation-skill/SKILL.md`; Feature 1 uses the earlier short format) | `pipeline/features/feature-N-<slug>.md` |
 | Decisions made while building a feature (what later features must remember) | `pipeline/decisions/feature-N-decisions.md` |
 | Architecture Decision Records (MADR; one file per design decision, written by the Architect before the Developer builds; template and index inside) | `pipeline/decisions/adr/ADR-NNN-<slug>.md`, `_template.md`, `_index.md` |
+| Work plans and agent blueprints (one per feature; template inside; coverage checked by `scripts/check-plan.ps1`) | `pipeline/plans/feature-N-plan.md`, `_template.md` |
+| Phase table (owners, reviewers, gates, human approvals) | `pipeline/phases.md` |
 | Bug records (template: `pipeline/bugs/_template.md`) | `pipeline/bugs/bug-NNN-<slug>.md` — severity/priority, evidence, root cause, impact, options, approval, and resolution per bug |
 | Project-wide rules | `pipeline/rules/*.md` — durable invariants, including `booking-conflicts.md` and `api-error-contract.md` |
-| Automated pipeline checks (entry gates, test traceability, ADR guard); usage in `pipeline/orchestration.md` | `scripts/*.ps1` |
+| Automated pipeline checks (status, entry gates, plan coverage, test traceability, ADR guard); usage in `pipeline/orchestration.md` | `scripts/*.ps1` |
 
 ## Coding conventions
 

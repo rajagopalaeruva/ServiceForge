@@ -4,11 +4,15 @@
 
 .DESCRIPTION
     Architect : the feature spec Status must be Approved (or later).
-    Developer : the spec Status must be Approved or Implemented, no Must functional requirement may
-                be Proposed, and every ADR for the feature must be accepted (rejected, deprecated and
-                superseded ADRs are ignored). A feature with no ADRs needs a row in the
-                "Features without ADRs" table of pipeline/decisions/adr/_index.md.
-    Tester    : same checks as Developer.
+    Planner   : the spec Status must be Approved or Implemented, no Must functional requirement may be
+                Proposed, and every ADR for the feature must be accepted (see below).
+    Developer : same as Planner, and the work plan pipeline/plans/feature-N-plan.md must exist with
+                Status Approved, In Progress or Done.
+    Tester    : same as Developer.
+
+    ADR rule: every ADR for the feature must be accepted (rejected, deprecated and superseded ADRs are
+    ignored). A feature with no ADRs needs a row in the "Features without ADRs" table of
+    pipeline/decisions/adr/_index.md.
 
     Exit code 0 = gate passes, 1 = gate fails. Reasons are printed. Nothing is modified.
 
@@ -16,7 +20,7 @@
     powershell -NoProfile -File scripts/check-gates.ps1 -Role Developer -Feature 2
 #>
 param(
-    [Parameter(Mandatory)][ValidateSet('Architect', 'Developer', 'Tester')][string]$Role,
+    [Parameter(Mandatory)][ValidateSet('Architect', 'Planner', 'Developer', 'Tester')][string]$Role,
     [Parameter(Mandatory)][int]$Feature
 )
 
@@ -24,6 +28,14 @@ param(
 $root = Get-RepoRoot
 $failures = New-Object System.Collections.Generic.List[string]
 $passes = New-Object System.Collections.Generic.List[string]
+
+function Get-StatusWord {
+    param([string[]]$Lines)
+    foreach ($line in $Lines) {
+        if ($line -match '^\|\s*\*\*Status\*\*\s*\|\s*(In Review|In Progress|\w+)') { return $Matches[1] }
+    }
+    return $null
+}
 
 # ---- spec ------------------------------------------------------------------------------------
 $spec = Get-ChildItem -Path (Join-Path $root 'pipeline\features') -Filter "feature-$Feature-*.md" -File -ErrorAction SilentlyContinue |
@@ -34,15 +46,11 @@ if (-not $spec) {
 }
 
 $specLines = [System.IO.File]::ReadAllLines($spec.FullName)
-$status = $null
-foreach ($line in $specLines) {
-    if ($line -match '^\|\s*\*\*Status\*\*\s*\|\s*(\w+)') { $status = $Matches[1]; break }
-}
+$status = Get-StatusWord -Lines $specLines
 
 $allowed = switch ($Role) {
     'Architect' { @('Approved', 'Implemented', 'Verified') }
-    'Developer' { @('Approved', 'Implemented') }
-    'Tester'    { @('Approved', 'Implemented') }
+    default     { @('Approved', 'Implemented') }
 }
 
 if (-not $status) {
@@ -55,7 +63,7 @@ if (-not $status) {
     $failures.Add("spec $($spec.Name) Status is '$status'; $Role needs one of: $($allowed -join ', ')")
 }
 
-# ---- Must requirements still Proposed (Developer, Tester) ---------------------------------------
+# ---- Must requirements still Proposed (all roles except Architect) ----------------------------------
 if ($Role -ne 'Architect') {
     $proposed = @($specLines | Where-Object { $_ -match '^\|\s*FR-\d+\s*\|.*\|\s*Must\s*\|\s*Proposed' })
     if ($proposed.Count -gt 0) {
@@ -65,7 +73,7 @@ if ($Role -ne 'Architect') {
     }
 }
 
-# ---- ADRs (Developer, Tester) -------------------------------------------------------------------
+# ---- ADRs (all roles except Architect) ------------------------------------------------------------------
 if ($Role -ne 'Architect') {
     $adrs = @(Get-AdrFiles -Root $root | ForEach-Object { Get-AdrInfo -Path $_.FullName } |
         Where-Object { $_ -and $_.Feature -eq "$Feature" })
@@ -90,6 +98,21 @@ if ($Role -ne 'Architect') {
             } else {
                 $failures.Add("$($adr.Name) status is '$($adr.Status)'; it must be accepted by a human")
             }
+        }
+    }
+}
+
+# ---- work plan (Developer, Tester) ----------------------------------------------------------------------
+if ($Role -eq 'Developer' -or $Role -eq 'Tester') {
+    $plan = Join-Path $root "pipeline\plans\feature-$Feature-plan.md"
+    if (-not (Test-Path $plan)) {
+        $failures.Add("no work plan pipeline/plans/feature-$Feature-plan.md")
+    } else {
+        $planStatus = Get-StatusWord -Lines ([System.IO.File]::ReadAllLines($plan))
+        if (@('Approved', 'In Progress', 'Done') -contains $planStatus) {
+            $passes.Add("work plan Status is $planStatus")
+        } else {
+            $failures.Add("work plan Status is '$planStatus'; it must be Approved by a human (or In Progress, Done)")
         }
     }
 }

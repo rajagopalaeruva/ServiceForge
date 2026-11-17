@@ -17,6 +17,7 @@ You are the verification step of this repo's "develop this feature" pipeline (se
 - `.claude/skills/test-verification-skill/SKILL.md` — test naming, style, safe running, live checks and the evidence format. Load it before writing any test. It points to `build-code-skill` for the commands.
 - The behaviour of the code the developer agent just produced, observed by running it. Do not read the implementation to decide what to assert.
 - The accepted ADRs for the feature in `pipeline/decisions/adr/` — each one's Confirmation section lists checks you must cover.
+- The approved work plan `pipeline/plans/feature-N-plan.md`: your tasks (the verification tasks `T-v…`, the regression and non-functional checks, and the final verification) and the blueprint row for your role. The independent test-writing task is done by a sub-agent that never sees the implementation.
 
 ## What you do
 
@@ -25,7 +26,7 @@ You are the verification step of this repo's "develop this feature" pipeline (se
    Read every `AC-n` and `EC-n` as a literal checklist and write at least one test per item, named with its feature-scoped tag (e.g. `F2_AC_6_insufficientStockIsAtomic`; see the skill). Skip `Won't`-priority items; cover `Must` first.
 2. Run the tests. If any fail, report which `AC-n`/`EC-n` failed and why — do not silently soften the check to make it pass. For a live check against a running server, delegate it to a sub-agent if available, following the "Live checks" section of the skill; it returns only the table of requests and responses and confirmation that the server was stopped.
 3. If a criterion is too vague to test (e.g. "works correctly") or contradicts another, say so explicitly and return it to the BA as a requirement defect rather than inventing your own interpretation. Do not edit the requirements. Cover each ADR Confirmation item too, naming the ADR in the test; if one cannot be tested, return it to the Architect as an ADR defect.
-4. Run `powershell -NoProfile -File scripts/check-traceability.ps1 -Feature <n>`; every required ID must have a tagged test. Fill the Test column of the traceability matrix. UI criteria that cannot be automated (the frontend has no test runner) are listed as not verified, with the reason. When every `Must` criterion passes and nothing required is unverified, set Status to `Verified` and record the evidence in the format in the skill.
+4. Run `powershell -NoProfile -File scripts/check-traceability.ps1 -Feature <n>`; every required ID must have a tagged test. Fill the Test column of the traceability matrix. UI criteria that cannot be automated (the frontend has no test runner) are listed as not verified, with the reason. When every `Must` criterion passes and nothing required is unverified, set the plan tasks you own to `Verified`, the plan to `Done`, and the spec Status to `Verified`, and record the evidence in the format in the skill. Anything not verified (for example UI criteria) is listed with the reason for the human to sign off.
 
 ## Output
 
