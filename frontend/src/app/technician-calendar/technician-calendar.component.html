@@ -14,7 +14,7 @@
   <h3>Scheduled jobs</h3>
   <table *ngIf="jobs.length > 0">
     <thead>
-      <tr><th>Customer</th><th>Start</th><th>End</th><th>Status</th></tr>
+      <tr><th>Customer</th><th>Start</th><th>End</th><th>Status</th><th>Parts</th></tr>
     </thead>
     <tbody>
       <tr *ngFor="let job of jobs">
@@ -22,11 +22,52 @@
         <td>{{ job.startTime }}</td>
         <td>{{ job.endTime }}</td>
         <td>{{ job.status }}</td>
+        <td>
+          <button type="button" *ngIf="canReserve(job)" (click)="startReserve(job)"
+                  [attr.aria-label]="'Reserve parts for job ' + jobLabel(job)">Reserve parts</button>
+        </td>
       </tr>
     </tbody>
   </table>
   <p *ngIf="jobs.length === 0">No jobs scheduled yet.</p>
 
+  <div aria-live="polite" role="status">
+    <p *ngIf="reserveSuccessMessage" class="success">{{ reserveSuccessMessage }}</p>
+  </div>
+  <div role="alert">
+    <p *ngIf="reserveErrorMessage" class="error">{{ reserveErrorMessage }}</p>
+  </div>
+
+  <form *ngIf="reservingJob" class="reserve-form" (ngSubmit)="confirming ? confirmReservation() : reviewReservation()">
+    <fieldset>
+      <legend>Reserve parts for job {{ jobLabel(reservingJob) }}</legend>
+      <ng-container *ngIf="!confirming">
+        <div class="reserve-line" *ngFor="let line of reserveLines; let i = index">
+          <label [attr.for]="'reserve-part-' + i">Part (line {{ i + 1 }})</label>
+          <select [id]="'reserve-part-' + i" [name]="'reservePart' + i" [(ngModel)]="line.partId">
+            <option [ngValue]="null">Choose a part</option>
+            <option *ngFor="let part of parts" [ngValue]="part.id">{{ part.name }} ({{ part.available }} available)</option>
+          </select>
+          <label [attr.for]="'reserve-qty-' + i">Quantity (line {{ i + 1 }})</label>
+          <input type="number" min="1" step="1" [id]="'reserve-qty-' + i" [name]="'reserveQty' + i" [(ngModel)]="line.quantity">
+          <button type="button" *ngIf="reserveLines.length > 1" (click)="removeLine(i)"
+                  [attr.aria-label]="'Remove line ' + (i + 1)">Remove line</button>
+        </div>
+        <button type="button" (click)="addLine()">Add another part</button>
+        <button type="submit">Review reservation</button>
+        <button type="button" (click)="cancelReserve()">Cancel</button>
+      </ng-container>
+      <ng-container *ngIf="confirming">
+        <p>Reserve the following for job {{ jobLabel(reservingJob) }}?</p>
+        <ul>
+          <li *ngFor="let line of reserveLines">{{ line.quantity }} x {{ partName(line.partId) }}</li>
+        </ul>
+        <button type="submit">Confirm reservation</button>
+        <button type="button" (click)="backToEdit()">Back</button>
+        <button type="button" (click)="cancelReserve()">Cancel</button>
+      </ng-container>
+    </fieldset>
+  </form>
   <h3>Book a new job</h3>
   <label>
     Customer name

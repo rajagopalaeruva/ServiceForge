@@ -1,0 +1,17 @@
+<div class="card">
+  <h2>Parts stock</h2>
+  <table *ngIf="parts.length > 0">
+    <thead>
+      <tr><th>Part</th><th>Available</th></tr>
+    </thead>
+    <tbody>
+      <tr *ngFor="let part of parts">
+        <td>{{ part.name }}</td>
+        <td>{{ part.available }}</td>
+      </tr>
+    </tbody>
+  </table>
+  <p *ngIf="parts.length === 0 && !errorMessage">No parts in stock.</p>
+  <p class="error" role="alert" *ngIf="errorMessage">{{ errorMessage }}</p>
+  <button type="button" (click)="loadParts()">Refresh stock</button>
+</div>

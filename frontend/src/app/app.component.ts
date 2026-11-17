@@ -1,4 +1,5 @@
-import { Component } from '@angular/core';
+import { Component, ViewChild } from '@angular/core';
+import { StockViewComponent } from './stock-view/stock-view.component';
 
 @Component({
   selector: 'app-root',
@@ -7,4 +8,10 @@ import { Component } from '@angular/core';
 })
 export class AppComponent {
   title = 'ServiceForge';
+
+  @ViewChild(StockViewComponent) stockView?: StockViewComponent;
+
+  onReserved(): void {
+    this.stockView?.loadParts();
+  }
 }

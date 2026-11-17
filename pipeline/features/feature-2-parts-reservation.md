@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Approved (v2.0 baselined 2026-11-17; v1.0 was approved 2026-11-12). Implementation not started. |
+| **Status** | Verified (T-10 evidence in section 14; v2.0 baselined 2026-11-17; v1.0 was approved 2026-11-12). Plan not Done: T-11 is open. |
 | **Version** | 2.0 |
 | **One-line intent** | Check available stock and reserve requested parts for an existing scheduled job. |
 | **Depends on** | Feature 1, *Decision: buffered interval detection* in `pipeline/decisions/feature-1-decisions.md` — a booked job occupies `[start, end + 45 minutes)` and exactly 45 minutes between jobs is allowed. Feature 2 treats that committed booked slot as read-only. It also relies on the Feature 1 job model (`JobStatus.SCHEDULED`) and the `pipeline/rules/booking-conflicts.md` rule. See section 3. |
@@ -189,16 +189,16 @@ Answers recorded on 2026-11-12 from the reviewer's replies. This is not formal s
 
 ## 11. Traceability matrix
 
-Test and Code columns are filled in by the Tester and Developer.
+Test and Code columns are filled in by the Tester and Developer. The Test column was filled in by the Tester at T-10 from the tagged tests (NFR tests are listed in section 14).
 
 | Story | Requirements | Acceptance criteria | Edge cases | Test | Code |
 |---|---|---|---|---|---|
-| US-1 | FR-1, FR-2, FR-16 | AC-1, AC-19, AC-22 | — | pending | pending |
-| US-2 | FR-3, FR-4, FR-6, FR-7, FR-8, FR-10, FR-14, FR-15, FR-16 | AC-2 to AC-7, AC-17, AC-18, AC-19 | EC-4, EC-8 | pending | pending |
-| US-3 | FR-9, FR-14 | AC-8, AC-17 | EC-6, EC-8 | pending | pending |
-| US-4 | FR-4, FR-5, FR-7, FR-11, FR-12, FR-16 | AC-5 to AC-7, AC-9 to AC-14, AC-20 | EC-1 to EC-5, EC-7, EC-9, EC-11 | pending | pending |
-| US-5 | FR-13, FR-18 | AC-15, AC-16 | EC-10 | pending | pending |
-| US-6 | FR-17 | AC-21 | — | pending | pending |
+| US-1 | FR-1, FR-2, FR-16 | AC-1, AC-19, AC-22 | — | AC-1 (Feature2PartsHttpPart1Test), AC-22 (Feature2RestartHttpTest); AC-19 by recorded walkthrough, Pass (14.4) | pending |
+| US-2 | FR-3, FR-4, FR-6, FR-7, FR-8, FR-10, FR-14, FR-15, FR-16 | AC-2 to AC-7, AC-17, AC-18, AC-19 | EC-4, EC-8 | AC-2 to AC-5 (Feature2PartsHttpPart1Test); AC-6, AC-7, AC-17, EC-8 (PartsReservationAtomicityHttpTest); EC-4 (Feature2PartsHttpPart1Test); AC-18 (SCHEDULED jobs only, RV-31), AC-19 by recorded walkthrough, Pass (14.4) | pending |
+| US-3 | FR-9, FR-14 | AC-8, AC-17 | EC-6, EC-8 | AC-8, AC-17, EC-6, EC-8 (PartsReservationAtomicityHttpTest) | pending |
+| US-4 | FR-4, FR-5, FR-7, FR-11, FR-12, FR-16 | AC-5 to AC-7, AC-9 to AC-14, AC-20 | EC-1 to EC-5, EC-7, EC-9, EC-11 | AC-9 to AC-15, EC-1 to EC-5, EC-9 (Feature2PartsHttpPart1Test); EC-7, EC-11 (PartsReservationAtomicityHttpTest); AC-20 by recorded walkthrough, Pass (14.4) | pending |
+| US-5 | FR-13, FR-18 | AC-15, AC-16 | EC-10 | AC-15 (Feature2PartsHttpPart1Test); EC-10 (Feature2RegressionHttpTest); AC-16: no tagged test, waived, Feature 1 classes run unchanged (see evidence) | pending |
+| US-6 | FR-17 | AC-21 | — | AC-21 (Feature2PartsHttpPart1Test) | pending |
 
 ## 12. Review and approval
 
@@ -242,4 +242,111 @@ Sign-off note (v1.0): approval was given by the reviewer in chat on 2026-11-12 (
 | 2.0 | 2026-11-17 | BA agent, on the human's instruction | Human approved v2.0 ("approve spec v2.0"). RV-9 resolved, v2.0 sign-off recorded, status set to Approved and baselined at v2.0. Further changes follow change control (new major version, re-approval). |
 
 ## Artifacts this feature touches
+- T-5: `backend/src/main/java/com/serviceforge/controller/PartsController.java` (class `com.serviceforge.controller.PartsController`): `GET /api/parts`, `POST /api/jobs/{jobId}/reservations`, `GET /api/jobs/{jobId}/reservations`. Returns the model classes `Part`, `ReservationResult` and `Reservation`; no new DTO. Entries for T-1 to T-4 and the tests are not yet listed.
+- T-6: frontend rontend/src/app/models/part.model.ts, rontend/src/app/services/parts.service.ts (the only HTTP service for parts), rontend/src/app/stock-view/stock-view.component.{ts,html,css}; rontend/src/app/app.module.ts (declares StockViewComponent).
+- T-7: frontend rontend/src/app/technician-calendar/technician-calendar.component.{ts,html,css} (reserve action for SCHEDULED jobs only, confirmation step, error and success messages, labels), rontend/src/app/app.component.{ts,html} (parent calls StockViewComponent.loadParts() when the calendar emits eserved).
 <filled in later, by the developer and tester agents>
+
+## 14. Test evidence (T-10, Tester)
+
+Status of this section: automated results, live check and the recorded walkthrough with the owner's sign-offs (14.3, 14.4). T-10 and this spec's Status are set to Verified; the plan is not Done (T-11 is open).
+
+### 14.1 Automated results
+
+| Field | Content |
+|---|---|
+| Gate | `powershell -NoProfile -File scripts/pipeline-status.ps1 -Feature 2`: Gate PASS; T-7 Built, T-9 Verified; T-10 ready |
+| Code state | Commit b5aba7e and uncommitted changes (Feature 2 work is not committed) |
+| Compile | `mvn -q test-compile` in `backend/`: exit 0 |
+| Test | `mvn test` in `backend/` (run after the compile, as a separate step): 181 run, 0 failures, 0 errors, 0 skipped; BUILD SUCCESS |
+| Traceability | `powershell -NoProfile -File scripts/check-traceability.ps1 -Feature 2 -Waive AC-16,AC-18,AC-19,AC-20`: 33 IDs, 29 with a tagged test, 4 waived (AC-16, AC-18, AC-19, AC-20); TRACEABILITY OK, exit 0 |
+| Feature 1 classes | `BookingOverlapRegressionTest` (14), `TechnicianAvailabilityServiceTest` (3) and `ValidationErrorContractRegressionTest` (11) ran and passed; `git status` shows no modification to them against HEAD b5aba7e. The diff against the plan's baseline commit is the T-9 record and was not repeated here. |
+
+Per ID (all pass in the run above; the test class holds the tagged test):
+
+| IDs | Test class |
+|---|---|
+| AC-1 to AC-5, AC-9 to AC-15, AC-21, EC-1 to EC-5, EC-9 | `Feature2PartsHttpPart1Test` |
+| AC-6 to AC-8, AC-17, EC-6 to EC-8, EC-11 | `PartsReservationAtomicityHttpTest` |
+| AC-22 (restart) | `Feature2RestartHttpTest` |
+| EC-10, NFR-8 | `Feature2RegressionHttpTest` |
+| NFR-3, NFR-4 | `Feature2NonFunctionalHttpTest` |
+| ADR-005 premise (T-v1) | `Adr005JacksonPremiseTest` |
+| AC-16 (waived) | No tagged test. Covered by the unchanged Feature 1 classes above, which pass. |
+| AC-18, AC-19, AC-20 | No automated test (no frontend runner). Walkthrough pending, see 14.4. |
+
+M-1 (rejected requests leave stock and reservations unchanged): holds in the automated run (AC-5, AC-6, AC-9 to AC-13, EC-11 pass) and in the live check below (the 409 and the 404 and 400 left stock unchanged). The checklist in 14.4 still has an M-1 line for the human to observe in the UI.
+
+### 14.2 Live check
+
+Port 18432 (checked free before start; not 8080). Started with `mvn -q spring-boot:run "-Dspring-boot.run.arguments=--server.port=18432"` from `backend/`, hidden window, from a fresh seed. Job ids 1, 2 and 3 are the seeded `SCHEDULED` jobs (`MockDataStore.seed()`).
+
+| # | Request | Expected | Observed status | Body summary | Result |
+|---|---|---|---|---|---|
+| 1 | GET /api/parts | 200, 5 parts, ids 1 to 5, available 12, 25, 6, 3, 0 | 200 | 5 parts, ids 1 to 5, available 12, 25, 6, 3, 0 | as expected |
+| 2 | POST /api/jobs/1/reservations `{"lines":[{"partId":3,"quantity":2}]}` | 201 | 201 | `{"jobId":1,"reserved":[{"partId":3,"quantity":2}]}` | as expected |
+| 3 | GET /api/jobs/1/reservations | 200, part 3 quantity 2 | 200 | `[{"partId":3,"quantity":2}]` | as expected |
+| 4 | GET /api/parts (after 2) | part 3 available 4, others unchanged | 200 | 12, 25, 4, 3, 0 | as expected |
+| 5 | POST /api/jobs/2/reservations `{"lines":[{"partId":4,"quantity":4}]}` | 409 insufficient stock | 409 | message "Insufficient stock for part 4: requested 4, available 3" | as expected |
+| 6 | GET /api/parts and GET /api/jobs/2/reservations (after 5) | stock unchanged; no reservation | 200, 200 | stock 12, 25, 4, 3, 0 (same as step 4); reservations `[]` | as expected |
+| 7 | POST /api/jobs/999/reservations `{"lines":[{"partId":1,"quantity":1}]}` | 404 | 404 | message "Job 999 not found" | as expected |
+| 8 | POST /api/jobs/3/reservations `{"lines":[{"partId":1,"quantity":0}]}` | 400 | 400 | message "lines[0].quantity: must be greater than 0" | as expected |
+| 9 | GET /api/parts (after 7 and 8) | stock unchanged | 200 | 12, 25, 4, 3, 0 | as expected |
+
+Server stopped: yes. Only the process tree started for this check (the `cmd` wrapper and its child Java process) was ended; afterwards port 18432 had no listener and the wrapper process was gone. Nothing was listening on 8080 at the end, and no process on 8080 was touched. A first request, GET /api/jobs, returned 405 because no such endpoint exists; it is not part of the contract and was only used to probe job ids.
+
+### 14.3 Deviation awaiting human sign-off (RV-31)
+
+| Item | Content |
+|---|---|
+| Deviation | The walkthrough covers AC-18 for `SCHEDULED` jobs only. The seed holds only `SCHEDULED` jobs and no endpoint changes a job's status, so the UI cannot be shown a non-`SCHEDULED` job. |
+| What covers the other half | "Reserve action not offered for non-`SCHEDULED` jobs" is shown by the T-11 code review of the status condition in the Angular code (FR-15). AC-13 (automated) shows only that the API answers 409. |
+| Decided | RV-31, decision of 2026-11-17, recorded in plan section 2.3 |
+| Follow-up (note only) | The non-`SCHEDULED` half of AC-18 is to be tested in the UI once the UI and backend can complete or cancel a job. Until then it is covered by the T-11 code review of the status condition. No new feature or BA dispatch is raised by this note. |
+| Sign-off for this deviation | Human sign-off: Rajagopal Aeruva, approved by Rajagopal Aeruva on 2026-11-17; recorded by the assistant on the owner's instruction. |
+
+### 14.4 Walkthrough checklist for the human (performed by the owner; sign-off pending)
+
+How to run it. Use two terminals; stop both when done.
+
+| Step | Directory | Command | Result |
+|---|---|---|---|
+| Start backend | `backend/` | `mvn -q spring-boot:run` (port 8080; the UI points at `http://localhost:8080/api`) | Wait until `http://localhost:8080/api/parts` answers |
+| Start frontend | `frontend/` | `npm start` (port 4200; run `npm install` first if `node_modules` is missing) | Open `http://localhost:4200` |
+| Stop | each terminal | Ctrl+C in both | Do not run `mvn clean` while the backend runs |
+
+Start from a fresh backend start so that stock is the seed (12, 25, 6, 3, 0). Reservations are lost on restart.
+
+| # | Item | What to check | Pass | Fail | Notes |
+|---|---|---|---|---|---|
+| 1 | Stock view (US-1, AC-19) | The stock view lists the 5 parts with their available quantities (12, 25, 6, 3, 0), and shows 0 for Refrigerant valve. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. The owner saw the initial display. |
+| 2 | AC-18, SCHEDULED jobs only | In the technician calendar, each `SCHEDULED` job offers a reserve action; choosing it shows the part and quantity form for that job. (Non-`SCHEDULED` half: T-11 code review, see 14.3.) | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. PASS for SCHEDULED jobs: the reserve action is available from the UI. The non-SCHEDULED half could not be tested in the UI, which has no way to complete or cancel a job or to show such records. The owner says it can be tested once such an option exists in the UI and backend. Follow-up, consistent with RV-31; still pending the T-11 code review of the status condition. |
+| 3 | AC-19 | After a successful reservation, a confirmation names the job and the quantities, and the stock view shows the reduced availability without reloading the page. | X | | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. The stock view refreshed automatically after reserving parts on a `SCHEDULED` job (FR-16), and the owner received a confirmation naming the job and quantities. The exact message text was not reported. |
+| 4 | AC-20 | A rejected reservation (for example 4 Thermostats, or any quantity of Refrigerant valve) shows the error message from the server, and the stock view is unchanged. | X | | Reported by the owner in chat: requesting more parts than available was rejected and stock was not reduced. The owner did not state the message text shown. |
+| 5 | NFR-5, labels | Each form control (part, quantity, submit and cancel or confirm) has a visible label that a screen reader or the accessibility inspector reports. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. Labels: PASS. |
+| 6 | NFR-5, keyboard | Open the form, choose a part, enter a quantity, submit and read the result using only Tab, Shift+Tab, Enter, Space and arrow keys. | X | | Reported by the owner in chat: the flow can be done with the keyboard. The owner did not mention whether focus moves into the form on open (see 14.5). |
+| 7 | NFR-5, announced messages | The confirmation and the error message are announced (for example by a screen reader, or role `status` or `alert` visible in the inspector). | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. Announced messages: PASS (owner's words: 'able to do'). |
+| 8 | M-5, interaction count | Count the interactions from the calendar to a read confirmation (choose job, choose part, enter quantity, submit, read confirmation). Write the number: ____ . Pass if 5 or fewer. | X | | Reported by the owner in chat, recorded by the assistant on the owner's instruction. PASS: fewer than 5 (owner's words: 'less than 5'). No exact number was reported, so the blank above is left unfilled. |
+| 9 | M-1 | After each rejected request in the run (item 4), the stock view and the job's reservations are the same as before the request. | X | | Reported by the owner in chat, UI side: stock was not reduced after a rejected request. The job's reservations were not reported. |
+
+Source of the recorded results: reported by the owner in chat, recorded by the assistant on the owner's instruction. `X` marks a result the owner reported as PASS. No result is inferred.
+
+Open items: item 2, non-`SCHEDULED` half of AC-18 (the UI has no way to complete or cancel a job or show such records; to be tested once the UI and backend offer it; consistent with RV-31, which stays with the T-11 code review of the status condition). Not reported: the exact confirmation and error message text (items 3, 4), whether focus moves into the form on open (item 6, see 14.5), the job's reservations after a rejected request (item 9), and an exact interaction count (item 8). The owner has not signed off.
+
+Human sign-off: Rajagopal Aeruva, approved by Rajagopal Aeruva on 2026-11-17; recorded by the assistant on the owner's instruction. Result of AC-18 (SCHEDULED jobs only, see 14.3), AC-19 and AC-20: all rows Pass as recorded above. Item 8 (M-5): fewer than 5 (owner's words); no exact number was given.
+
+### 14.5 Not verified, with reasons
+
+| Item | Reason |
+|---|---|
+| AC-18, AC-19, AC-20, NFR-5, M-5 | UI criteria. The frontend has no test runner (R-1; adding one needs a recorded decision). Verified only by the human walkthrough in 14.4, which the owner has performed; see the open items listed there. |
+| AC-18, "not offered" half for non-`SCHEDULED` jobs | Cannot be shown in the UI with seed data. Left to the T-11 code review (14.3). |
+| AC-16 as a tagged test | No tagged test exists; waived in the traceability run. Evidence is the unchanged, passing Feature 1 classes; the diff against the plan's baseline commit was not repeated in T-10. |
+| NFR-6, NFR-1, ADR-003, ADR-004 code conditions | Reviewed in T-11, not in T-10. |
+| T-7 behaviour: focus is not moved into the reserve form when it opens | Known from T-7; not tested (no runner). The human may judge it against NFR-5 keyboard use (item 6). |
+| T-7 behaviour: no client-side quantity validation | Known from T-7; invalid quantities reach the server, which answers 400 (live check step 8). How the UI shows that 400 is not verified. |
+| T-7 behaviour: the part list is not refreshed while the form is open | Known from T-7; stock shown in the form may be out of date until the form is closed or reopened. Not verified. |
+| Concurrency under a real browser or several clients | Only the automated concurrency tests (AC-17, EC-8) ran. |
+| `npm run build` | Not run in T-10 (the T-7 done check); the walkthrough's `npm start` will show a compile error if there is one. |
+
+Sign-off state: T-10 Verified and spec Status Verified, set by the Tester after the owner's sign-offs in 14.3 and 14.4. Not set: plan Done (T-11 is open).

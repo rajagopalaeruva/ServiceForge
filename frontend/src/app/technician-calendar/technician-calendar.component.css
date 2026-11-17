@@ -1,20 +1,29 @@
-table {
-  width: 100%;
-  border-collapse: collapse;
+.success {
+  color: #276749;
+}
+
+.error {
+  color: #b00020;
+}
+
+.reserve-form fieldset {
   margin-bottom: 16px;
 }
 
-th, td {
-  text-align: left;
-  padding: 6px 8px;
-  border-bottom: 1px solid #e2e8f0;
+.reserve-form select,
+.reserve-form input {
+  display: block;
+  margin-bottom: 8px;
 }
 
-ul {
-  list-style: none;
-  padding: 0;
+.reserve-form button {
+  margin-right: 8px;
+  margin-bottom: 8px;
 }
 
-li {
-  margin-bottom: 4px;
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: 3px solid #1a202c;
+  outline-offset: 2px;
 }
