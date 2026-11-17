@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Fix Proposed (awaiting human decision) |
+| **Status** | Approved (Option A, 2026-11-17). Regression test and fix not started. |
 | **Type** | Defect |
 | **Severity / reason** | S3 Minor — behaviour is rejected correctly with 400, but clients get no usable message and the response shape breaks the repo contract |
 | **Priority / reason** | P1 — Feature 2 (FR-11, NFR-2, AC-9, AC-10) requires HTTP 400 with `ApiError`, so this should be settled before Feature 2 is implemented |
@@ -10,7 +10,7 @@
 | **Violated requirement** | `AGENTS.md` coding conventions: "validation errors return `400` with an `ApiError` body". Feature 2 NFR-2 depends on it |
 | **Reported by / date** | Bug agent, found while reviewing BUG-001 — 2026-11-12 |
 | **Found in** | Commit `cfbcdcf`, local run of the backend on `localhost:8080` |
-| **Implementation approval** | Pending — no approval recorded |
+| **Implementation approval** | Approved by Rajagopal Aeruva on 2026-11-17, in chat ("go with option A recommended"): Option A with the in-scope, out-of-scope and boundary semantics in section 8. Message wording (field name for validation errors, "Malformed request body" for unreadable bodies) taken as the recommended default; the human did not ask for changes. Recorded here by the assistant on that instruction. |
 | **Related records** | [BUG-002](bug-002-job-time-range-validation.md) (depends on this); [Feature 2](../features/feature-2-parts-reservation.md) |
 
 ## 1. Summary
@@ -67,7 +67,7 @@ When a request fails bean validation, has malformed JSON, or has an unparseable 
 - **In scope:** a shared handler returning 400 with an `ApiError` for bean-validation failures, malformed JSON, unparseable values and non-numeric path variables; a message that names the offending field or states "Malformed request body"; no internals in the message.
 - **Out of scope:** changing 404/409 behaviour, replacing the controllers' local mappings (F-3 is recorded for later), new endpoints.
 - **Boundary semantics:** status 400 only; body is exactly the existing `ApiError` shape; messages are deterministic and contain no class names or stack traces.
-- **Question for the human:** approve Option A and its scope before Feature 2 implementation starts.
+- **Question for the human:** approve Option A and its scope before Feature 2 implementation starts. **Resolved 2026-11-17: Option A approved** (see the metadata table). Next: Tester writes a regression that fails on the unfixed code, then the Developer implements.
 
 ## 9. Acceptance criteria
 | ID | Case | Expected |
@@ -99,3 +99,4 @@ Pending until closed.
 | 2026-11-12 | Triaged | Reproduced | Bug agent | Executed on a local run, three requests |
 | 2026-11-12 | Reproduced | Analysed | Bug agent | Root cause, impact, escape recorded |
 | 2026-11-12 | Analysed | Fix Proposed | Bug agent | Options and recommendation recorded; awaiting human decision |
+| 2026-11-17 | Fix Proposed | Approved | Human (Rajagopal Aeruva), recorded by assistant | Option A approved in chat, scope as in section 8. Approval covers the fix only after the Tester's failing regression is recorded |
