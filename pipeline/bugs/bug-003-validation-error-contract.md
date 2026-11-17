@@ -2,7 +2,7 @@
 
 | Field | Value |
 |---|---|
-| **Status** | Approved (Option A, 2026-11-17). Regression test and fix not started. |
+| **Status** | Verified (2026-11-17). Awaiting preventive-action confirmation and closure. |
 | **Type** | Defect |
 | **Severity / reason** | S3 Minor — behaviour is rejected correctly with 400, but clients get no usable message and the response shape breaks the repo contract |
 | **Priority / reason** | P1 — Feature 2 (FR-11, NFR-2, AC-9, AC-10) requires HTTP 400 with `ApiError`, so this should be settled before Feature 2 is implemented |
@@ -81,13 +81,53 @@ When a request fails bean validation, has malformed JSON, or has an unparseable 
 | AC-7 | Any 400 body | Contains no exception class names or stack traces |
 
 ## 10. Regression and verification evidence
-Not run. No regression test exists. Pre-fix executed evidence is in section 3.
+**Regression test (Tester, 2026-11-17):** `backend/src/test/java/com/serviceforge/controller/ValidationErrorContractRegressionTest.java`. It uses the full Spring context (`@SpringBootTest` with `MockMvc`) so any application-wide handler is exercised. Test names carry the AC IDs from section 9.
+
+**Run on unfixed code (Executed):** `mvn -B test` from `backend/`, commit `d018bdf` plus the new test file.
+
+| Result | Detail |
+|---|---|
+| Total | 28 run, 8 failed, 0 errors |
+| Failed, expected reason | `BUG003_AC1`, `AC2`, `AC3`, `AC4`, `AC5`, and `AC7` (3 parameterised cases): the status assertion (400) passed, then `No value at JSON path "$.message"` because the 400 response has no `ApiError` body |
+| Passed, guards | `BUG003_AC6` for 201, 404 and 409 (3 tests), the 14 `BookingOverlapRegressionTest` tests and the 3 `TechnicianAvailabilityServiceTest` tests |
+
+The failure is the defect in section 2 (no `ApiError` on 400), not a setup problem: the controller was reached and returned 400, and the server log shows Spring's default resolver handling `MethodArgumentNotValidException`, `HttpMessageNotReadableException` and `MethodArgumentTypeMismatchException`.
+
+### Verification after the fix (Tester, 2026-11-17)
+
+**Automated (Executed):** `mvn -B clean test` from `backend/` with `ApiExceptionHandler` in place: 28 run, 0 failures, 0 errors, `BUILD SUCCESS`. The same 11 regression tests that failed before the fix now pass; the 17 existing tests still pass.
+
+**Live (Executed):** backend started with `mvn -q spring-boot:run -Dspring-boot.run.arguments=--server.port=8089` (port 8080 was in use by the user's own server and was left untouched), requests sent with PowerShell `Invoke-WebRequest`, server stopped afterwards.
+
+| Criterion | Request | Result |
+|---|---|---|
+| AC-1 | `POST /api/jobs`, blank `customerName` | 400 `{"message":"customerName: must not be blank"}` |
+| AC-2 | `POST /api/jobs`, `technicianId` absent | 400 `{"message":"technicianId: must not be null"}` |
+| AC-3 | `POST /api/jobs`, body `{"technicianId":3,` | 400 `{"message":"Malformed request body"}` |
+| AC-4 | `POST /api/jobs`, `startTime` is `not-a-date` | 400 `{"message":"Malformed request body"}` |
+| AC-5 | `GET /api/technicians/abc` | 400 `{"message":"Invalid value for parameter 'id'"}` |
+| AC-6 | valid booking / overlapping booking / unknown technician (`POST`), unknown technician (`GET`) | 201 with the job / 409 with the existing conflict message / 404 `No technician with id 9999` / 404 `No technician with id 999`, all unchanged |
+| AC-7 | all 400 bodies above and the three parameterised cases in the test | No class names, packages, stack traces or rejected values |
+
+**Verdict:** every acceptance criterion AC-1 to AC-7 passes. No failures, so nothing returns to the Developer. Not verified: concurrent requests (out of scope for this bug).
+
+**Notes for the Developer and Tester:**
+- AC-3 asserts the exact message `Malformed request body`. AC-1 and AC-2 assert the message contains the field name. AC-4 and AC-5 assert a non-empty `message`.
+- Under `MockMvc` the unfixed response body is empty, whereas the running server returns Spring's default JSON body (section 3). Both lack `message`, so the test fails for the same reason in either case.
+- The AC-6 201 guard books technician 2 on 2031-03-03 and mutates the in-memory store for that test run only.
+- The test file was committed together with the fix, so no commit leaves the build red.
 
 ## 11. Preventive actions (CAPA)
 Pending: add `pipeline/rules/api-error-contract.md` (every 4xx uses `ApiError`); add AC-1 to AC-7 as permanent tests; record the cross-cutting handler decision in `pipeline/decisions/`.
 
 ## 12. Artifacts and resolution
-Pending. Expected: a new shared handler class under the controller layer, a new regression test class, one rule file.
+**Implemented (Developer, 2026-11-17):**
+- `backend/src/main/java/com/serviceforge/controller/ApiExceptionHandler.java` (new): `@RestControllerAdvice` mapping `MethodArgumentNotValidException` (message `field: reason`, fields sorted, joined with `; `), `HttpMessageNotReadableException` (message `Malformed request body`) and `MethodArgumentTypeMismatchException` (message `Invalid value for parameter '<name>'`) to 400 `ApiError`. Messages carry no class names, stack traces or rejected values.
+- `backend/src/test/java/com/serviceforge/controller/ValidationErrorContractRegressionTest.java` (new, Tester): the regression from section 10.
+- `pipeline/rules/api-error-contract.md` (new): the reusable invariant.
+- Not changed: `JobController`, `TechnicianController`, the service, the model, and every 201/404/409 mapping.
+
+**Developer's test run after the fix (Executed):** `mvn -B clean test` from `backend/`: 28 run, 0 failures, 0 errors (`BookingOverlapRegressionTest` 14, `ValidationErrorContractRegressionTest` 11, `TechnicianAvailabilityServiceTest` 3). This is not verification; the Tester verifies next.
 
 ## 13. Lessons learned and metrics
 Pending until closed.
@@ -100,3 +140,6 @@ Pending until closed.
 | 2026-11-12 | Reproduced | Analysed | Bug agent | Root cause, impact, escape recorded |
 | 2026-11-12 | Analysed | Fix Proposed | Bug agent | Options and recommendation recorded; awaiting human decision |
 | 2026-11-17 | Fix Proposed | Approved | Human (Rajagopal Aeruva), recorded by assistant | Option A approved in chat, scope as in section 8. Approval covers the fix only after the Tester's failing regression is recorded |
+| 2026-11-17 | Approved | Regression Reproduced | Tester | `ValidationErrorContractRegressionTest` fails on unfixed code for the expected reason (8 failures: 400 without `ApiError.message`); guards for 201/404/409 and the existing suites pass. Evidence in section 10 |
+| 2026-11-17 | Regression Reproduced | Implemented | Developer | `ApiExceptionHandler` added for the approved scope; `mvn -B clean test` shows 28 run, 0 failures. Rule `pipeline/rules/api-error-contract.md` added. Not yet verified by the Tester |
+| 2026-11-17 | Implemented | Verified | Tester | Regression, full suite (28 tests) and live requests pass for AC-1 to AC-7; evidence in section 10 |
