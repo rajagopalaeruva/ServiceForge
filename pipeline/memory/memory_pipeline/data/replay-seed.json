@@ -1,0 +1,135 @@
+{
+  "_about": "Replay seed for the Feature 2 simulation (memory-architecture.md, section 1). Summaries are written from the repo files named in source_path; the repo wins if they disagree. as_of for the replay is 2026-11-12 (Feature 2 spec v1.0 baselined). Dates are the dates the sources give. Where a source gives no date, the earliest dated Feature 1 record (2026-11-11) is used and the record says so in `note`.",
+  "records": [
+    {
+      "id": "mem-f1-buffered-interval",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "decision", "status": "current",
+      "supersedes": "mem-f1-exact-start",
+      "source_task": "BUG-001",
+      "source_path": "pipeline/decisions/feature-1-decisions.md#decision-buffered-interval-detection",
+      "timestamp": "2026-11-11", "importance": 3,
+      "summary": "A booked job occupies [start, end + 45 min) for its technician. The next job may start exactly at the buffered end. Both buffered intervals are compared, so inserting a job before an existing one also respects travel time.",
+      "keywords": ["overlap", "buffer", "interval", "booking", "booked", "slot", "45", "technician", "conflict", "committed"]
+    },
+    {
+      "id": "mem-f1-buffer-45",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "fact", "status": "current",
+      "source_task": "Feature 1",
+      "source_path": "pipeline/decisions/feature-1-decisions.md#decision-standard-travel-buffer-per-job-is-45-minutes",
+      "timestamp": "2026-11-11", "importance": 3,
+      "note": "The source gives no date; 2026-11-11 is the earliest dated Feature 1 record.",
+      "summary": "The standard travel buffer per job is 45 minutes (TRAVEL_BUFFER_MINUTES in TechnicianAvailabilityService). It limits how many jobs fit in a technician's day.",
+      "keywords": ["travel", "buffer", "45", "minutes", "TRAVEL_BUFFER_MINUTES", "jobs", "day", "technician", "reservation"]
+    },
+    {
+      "id": "mem-f1-exact-start",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "decision", "status": "superseded",
+      "source_task": "BUG-001",
+      "source_path": "pipeline/decisions/feature-1-decisions.md#decision-overlap-detection-compares-exact-start-times-not-intervals",
+      "timestamp": "2026-11-11", "importance": 1,
+      "summary": "Superseded: the original overlap check rejected a booking only when its start time exactly matched an existing booking's start time. It did not compare intervals.",
+      "keywords": ["overlap", "start", "time", "exact", "check", "booking", "conflict"]
+    },
+    {
+      "id": "mem-rule-booking-conflicts",
+      "namespace": "serviceforge:main:dev", "feature": "all", "type_tag": "fact", "status": "current",
+      "source_task": "BUG-001",
+      "source_path": "pipeline/rules/booking-conflicts.md",
+      "timestamp": "2026-11-11", "importance": 3,
+      "note": "The source gives no date; 2026-11-11 is the date BUG-001 was verified.",
+      "summary": "Booking-conflict detection must compare time intervals for the same technician, keep TRAVEL_BUFFER_MINUTES = 45, reject conflicts with HTTP 409 and an ApiError body, and never persist a rejected booking.",
+      "keywords": ["conflict", "booking", "interval", "technician", "409", "ApiError", "buffer", "reject"]
+    },
+    {
+      "id": "mem-conv-api-error",
+      "namespace": "serviceforge:main:dev", "feature": "all", "type_tag": "fact", "status": "current",
+      "source_task": "AGENTS.md",
+      "source_path": "AGENTS.md#coding-conventions",
+      "timestamp": "2026-11-11", "importance": 2,
+      "note": "The source gives no date; 2026-11-11 is the earliest dated Feature 1 record.",
+      "summary": "Backend convention: REST endpoints return ResponseEntity<T>. Validation errors return 400 and not-found returns 404, each with an ApiError body.",
+      "keywords": ["apierror", "400", "404", "validation", "error", "response", "rest", "controller"]
+    },
+    {
+      "id": "mem-bug-001",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "episode", "status": "current",
+      "source_task": "BUG-001",
+      "source_path": "pipeline/bugs/bug-001-booking-overlap.md",
+      "timestamp": "2026-11-11", "importance": 2,
+      "summary": "BUG-001: the booking overlap check compared only exact start times. Fixed with a buffered interval check [start, end + 45 min). Verified 2026-11-11. Concurrent-booking atomicity was out of scope.",
+      "keywords": ["bug", "overlap", "booking", "buffer", "interval", "verified", "concurrent"]
+    },
+    {
+      "id": "mem-bug-002",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "episode", "status": "proposed",
+      "source_task": "BUG-002",
+      "source_path": "pipeline/bugs/bug-002-job-time-range-validation.md",
+      "timestamp": "2026-11-12", "importance": 1,
+      "summary": "BUG-002: a job is accepted with an end time at or before its start time, because nothing on the booking path checks the range. Reported 2026-11-12; fix proposed, awaiting a human decision.",
+      "keywords": ["bug", "validation", "end", "start", "time", "range", "job", "booking"]
+    },
+    {
+      "id": "mem-bug-003",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "episode", "status": "proposed",
+      "source_task": "BUG-003",
+      "source_path": "pipeline/bugs/bug-003-validation-error-contract.md",
+      "timestamp": "2026-11-12", "importance": 2,
+      "summary": "BUG-003: validation failures return Spring's default 400 body, not an ApiError, because there is no global exception handler. Reported 2026-11-12 and not yet fixed.",
+      "keywords": ["bug", "validation", "apierror", "400", "handler", "error", "exception"]
+    },
+    {
+      "id": "mem-bug-004",
+      "namespace": "serviceforge:main:dev", "feature": 1, "type_tag": "episode", "status": "proposed",
+      "source_task": "BUG-004",
+      "source_path": "pipeline/bugs/bug-004-non-scheduled-jobs-block-calendar.md",
+      "timestamp": "2026-11-12", "importance": 2,
+      "summary": "BUG-004: completed and cancelled jobs still block a technician's calendar. It is a requirement gap routed to the BA, with no fix until the policy is settled.",
+      "keywords": ["bug", "completed", "cancelled", "status", "calendar", "job", "scheduled", "technician", "requirement"]
+    },
+    {
+      "id": "mem-f2-spec-eligibility",
+      "namespace": "serviceforge:main:dev", "feature": 2, "type_tag": "fact", "status": "current",
+      "source_task": "Feature 2 spec v1.0",
+      "source_path": "pipeline/features/feature-2-parts-reservation.md",
+      "timestamp": "2026-11-12", "importance": 2,
+      "summary": "Feature 2: a reservation can only target a job whose status is SCHEDULED, and it never creates, moves or alters that job's booked slot.",
+      "keywords": ["reservation", "job", "scheduled", "slot", "parts", "booked"]
+    },
+    {
+      "id": "mem-f2-adr-001",
+      "namespace": "serviceforge:main:dev", "feature": 2, "type_tag": "decision", "status": "current",
+      "source_task": "ADR-001",
+      "source_path": "pipeline/decisions/adr/ADR-001-serialise-stock-changes-with-one-lock.md",
+      "timestamp": "2026-11-17", "importance": 2,
+      "summary": "ADR-001: serialise stock changes with one lock around check-and-apply and the stock read. Safe for a single instance only.",
+      "keywords": ["lock", "stock", "reservation", "concurrency", "parts"]
+    },
+    {
+      "id": "mem-f2-seed-catalogue",
+      "namespace": "serviceforge:main:dev", "feature": 2, "type_tag": "fact", "status": "current",
+      "source_task": "Feature 2",
+      "source_path": "pipeline/decisions/feature-2-decisions.md#decision-seeded-parts-catalogue-a-1",
+      "timestamp": "2026-11-17", "importance": 1,
+      "summary": "Seeded parts catalogue: five parts, ids 1 to 5, with available stock 12, 25, 6, 3 and 0.",
+      "keywords": ["parts", "stock", "catalogue", "seed", "reservation"]
+    },
+    {
+      "id": "mem-rule-api-error-contract",
+      "namespace": "serviceforge:main:dev", "feature": "all", "type_tag": "fact", "status": "current",
+      "source_task": "BUG-003",
+      "source_path": "pipeline/rules/api-error-contract.md",
+      "timestamp": "2026-11-17", "importance": 3,
+      "summary": "Every 4xx response must carry an ApiError body. Request-level 400 mapping lives in one shared handler; new 404 and 409 outcomes use their own exception types, mapped centrally.",
+      "keywords": ["apierror", "400", "404", "409", "handler", "error", "contract", "exception"]
+    },
+    {
+      "id": "mem-decoy-buffer",
+      "namespace": "decoy:main:dev", "feature": 1, "type_tag": "fact", "status": "current",
+      "source_task": "decoy",
+      "source_path": "AGENTS.md",
+      "timestamp": "2026-11-11", "importance": 3,
+      "summary": "Standard travel buffer per job is 90 minutes. A booked job occupies [start, end + 90 min).",
+      "keywords": ["travel", "buffer", "90", "minutes", "booked", "job", "interval", "overlap"]
+    }
+  ]
+}

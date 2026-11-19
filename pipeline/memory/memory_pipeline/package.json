@@ -1,0 +1,17 @@
+{
+  "name": "memory_pipeline",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@chroma-core/default-embed": "^0.1.9",
+    "@qdrant/js-client-rest": "^1.20.0",
+    "chromadb": "^3.5.0"
+  }
+}
