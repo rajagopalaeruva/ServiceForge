@@ -10,14 +10,40 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { slug } from "./record.mjs";
+import { slug, tsOf } from "./record.mjs";
 import { terms } from "./text.mjs";
 
+// Bump when the extraction rules change. It is part of every source_hash, so the next sync re-checks every record.
+export const EXTRACTOR_VERSION = 2;
+
 const MAX_SUMMARY = 550;           // retain.mjs rejects summaries over 600
-const DATE = /\b(\d{4}-\d{2}-\d{2})\b/;
+const DATES = /\b(\d{4}-\d{2}-\d{2})\b/g;
+const NEGATION = /\b(not|never|no longer)\b|n['’]t\b/i;
 
 const hash = s => crypto.createHash("sha1").update(s.replace(/\s+/g, " ").trim()).digest("hex").slice(0, 12);
 const read = (repoRoot, rel) => fs.readFileSync(path.resolve(repoRoot, rel), "utf8").replace(/\r\n/g, "\n");
+
+/** Source entry settings that change what a record holds. They go into source_hash with the extractor version (finding F-9). */
+const configKey = (src, ctx) =>
+  `v${EXTRACTOR_VERSION}|feature=${src.feature ?? ""}|defaultDate=${src.defaultDate ?? ""}|namespace=${ctx.namespace}`;
+
+/** The earliest real calendar date in the text, or null. Impossible dates such as 2026-13-45 are ignored. */
+export function earliestDate(text) {
+  const found = [];
+  for (const m of text.matchAll(DATES)) {
+    try { tsOf(m[1]); found.push(m[1]); } catch { /* not a real date */ }
+  }
+  return found.length ? found.sort()[0] : null;
+}
+
+/** True when the text says "superseded" at least once without a negation just before it ("not superseded", "no longer superseded"). */
+export function saysSuperseded(text) {
+  for (const m of text.matchAll(/\bsuperseded\b/gi)) {
+    const before = text.slice(Math.max(0, m.index - 20), m.index);
+    if (!NEGATION.test(before)) return true;
+  }
+  return false;
+}
 
 export function stripMd(s) {
   return s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/\*\*([^*]+)\*\*/g, "$1").replace(/`/g, "").replace(/\s+/g, " ").trim();
@@ -70,8 +96,8 @@ function fromDecisionLog(src, ctx) {
     if (!summary || summary.length < 25) { skipped.push({ source: where, reason: "no usable first paragraph" }); continue; }
 
     const lifecycle = body.split("\n").filter(l => /^\*\*Lifecycle/i.test(l.trim())).join(" ");
-    const superseded = /\bsuperseded\b/i.test(`${heading} ${first} ${lifecycle}`);
-    const dated = DATE.exec(body);
+    const superseded = saysSuperseded(`${heading} ${first} ${lifecycle}`);
+    const dated = earliestDate(body);
     const task = /\b(BUG-\d+|ADR-\d+)\b/.exec(`${heading} ${first}`) ?? /\b(BUG-\d+|ADR-\d+)\b/.exec(body);
     const title = heading.replace(/^Decision:\s*/i, "");
 
@@ -81,16 +107,21 @@ function fromDecisionLog(src, ctx) {
       feature: src.feature, type_tag: "decision", status: superseded ? "superseded" : "current",
       source_task: task ? task[1] : `Feature ${src.feature}`,
       source_path: where,
-      timestamp: dated ? dated[1] : src.defaultDate,
+      timestamp: dated ?? src.defaultDate,
       importance: superseded ? 1 : 2,
       summary,
       keywords: [...terms(stripMd(title))],
-      source_hash: hash(`${heading}\n${body}`),
+      source_hash: hash(`${configKey(src, ctx)}\n${heading}\n${body}`),
       ...(dated ? {} : { note: `date assumed (${src.dateNote ?? "source gives none"}): ${src.defaultDate}` }),
     });
   }
   return { out, skipped };
 }
+
+/** ADR status word -> record status. null means the status is not one we retain (for example rejected). */
+const statusOf = raw => /^accepted/i.test(raw) ? "current"
+  : /^proposed/i.test(raw) ? "proposed"
+  : /^(superseded|deprecated)/i.test(raw) ? "superseded" : null;
 
 function fromAdrIndex(src, ctx) {
   const out = [], skipped = [];
@@ -101,12 +132,16 @@ function fromAdrIndex(src, ctx) {
     const [, adr, file, title, decision, statusRaw, featureRaw] = m;
     const rel = `${dir}/${file}`;
     if (!fs.existsSync(path.resolve(ctx.repoRoot, rel))) { skipped.push({ source: rel, reason: "ADR file not found" }); continue; }
-    const status = /^accepted/i.test(statusRaw) ? "current"
-      : /^proposed/i.test(statusRaw) ? "proposed"
-      : /^(superseded|deprecated)/i.test(statusRaw) ? "superseded" : null;
+    const status = statusOf(statusRaw);
     if (!status) { skipped.push({ source: rel, reason: `status "${statusRaw}" is not retained` }); continue; }
 
     const front = /^---\n([\s\S]*?)\n---/.exec(read(ctx.repoRoot, rel))?.[1] ?? "";
+    // The index row and the ADR file must agree on the status. If they do not, the extractor does not guess.
+    const frontStatusRaw = /^status:[ \t]*(\S[^\n]*)$/m.exec(front)?.[1]?.trim();
+    if (frontStatusRaw && statusOf(frontStatusRaw) !== status) {
+      skipped.push({ source: rel, reason: `status disagrees: index says "${statusRaw}", ADR file says "${frontStatusRaw}"; not guessing` });
+      continue;
+    }
     const date = /^date:\s*(\d{4}-\d{2}-\d{2})/m.exec(front)?.[1];
     out.push({
       ...base(ctx, src),
@@ -116,7 +151,7 @@ function fromAdrIndex(src, ctx) {
       timestamp: date ?? src.defaultDate, importance: 2,
       summary: shorten(stripMd(`${title.replace(/\.$/, "")}. ${decision}`)),
       keywords: [...terms(stripMd(title))],
-      source_hash: hash(`${line}\n${front}`),
+      source_hash: hash(`${configKey(src, ctx)}\n${line}\n${front}`),
       ...(date ? {} : { note: `date assumed: ${src.defaultDate}` }),
     });
   }
@@ -140,7 +175,7 @@ function fromRule(src, ctx) {
       timestamp: src.defaultDate, importance: 3,
       summary,
       keywords: [...terms(stripMd(title))],
-      source_hash: hash(`${sec.heading}\n${sec.body}`),
+      source_hash: hash(`${configKey(src, ctx)}\n${sec.heading}\n${sec.body}`),
       note: `date assumed (${src.dateNote ?? "source gives none"}): ${src.defaultDate}`,
     }],
     skipped: [],

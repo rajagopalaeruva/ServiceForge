@@ -3,11 +3,13 @@
 // Embedding: only `summary` is embedded (not `keywords`), with Chroma's default MiniLM function, run in this Node process.
 import { ChromaClient } from "chromadb";
 import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
-import { validateRecord } from "../record.mjs";
+import { validateRecord, keyOf } from "../record.mjs";
+import { MIN_COSINE } from "../config.mjs";
 
 export class ChromaStore {
   constructor({ collection = "memory_replay", host = "localhost", port = 8000 } = {}) {
     this.name = collection;
+    this.minRelevance = MIN_COSINE;   // cosine floor, see config.mjs
     this.client = new ChromaClient({ host, port });
     this.embedder = new DefaultEmbeddingFunction();
     this._col = null;
@@ -48,7 +50,7 @@ export class ChromaStore {
     const problems = validateRecord(record);
     if (problems.length) throw new Error(`invalid record ${record?.id}: ${problems.join("; ")}`);
     const col = await this._collection();
-    await col.upsert({ ids: [record.id], documents: [record.summary], metadatas: [this._meta(record)] });
+    await col.upsert({ ids: [keyOf(record)], documents: [record.summary], metadatas: [this._meta(record)] });
   }
 
   async all() {
@@ -70,7 +72,7 @@ export class ChromaStore {
 
   /** raw = cosine similarity (1 - distance), higher is better. */
   async query(filters, text, limit = 10) {
-    if (!String(text).trim()) return [];
+    if (!String(text).trim() || filters.features.length === 0) return [];   // an empty $in list makes Chroma throw
     const col = await this._collection();
     const res = await col.query({
       queryTexts: [text], nResults: limit, where: this._where(filters), include: ["metadatas", "distances"],

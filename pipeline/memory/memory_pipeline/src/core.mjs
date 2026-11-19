@@ -4,7 +4,8 @@ import { estimateTokens } from "./tokens.mjs";
 import { BUDGET_TOKENS, RESERVE_TOKENS, WEIGHTS, SCALING } from "./config.mjs";
 
 const round = n => Math.round(n * 1e6) / 1e6;
-const firstSentence = s => s.split(/(?<=[.!?])\s+/)[0];
+// A sentence ends at . ! or ? followed by whitespace and then an uppercase letter or a digit, so "e.g. the" does not end one.
+const firstSentence = s => s.split(/(?<=[.!?])\s+(?=[A-Z0-9])/)[0];
 
 function line(rec, summary) {
   return `- [${rec.id}] ${summary} (source: ${rec.source_path}; ${rec.status}; ${rec.timestamp})`;
@@ -12,9 +13,11 @@ function line(rec, summary) {
 
 /**
  * store.query(filters, text, limit) -> [{ record, raw }]  (raw = the store's own relevance, higher is better)
+ * store.minRelevance (optional, default 0): a candidate whose raw score is not above it is dropped (finding F-7).
  *
- * Steps: query the store, re-check the hard filters, scale relevance by the best
- * match, score, sort, then fill the token budget. Never exceeds `budget`.
+ * Steps: query the store, re-check the hard filters, drop candidates below the relevance floor, scale relevance
+ * by the best match, score, sort, then fill the token budget. Never exceeds `budget`.
+ * Recency is linear over the date range of the candidates that pass the filters and the store limit (design 7.3, section 9).
  */
 export async function retrieve(store, opts) {
   const {
@@ -22,11 +25,14 @@ export async function retrieve(store, opts) {
     features = [1, "all"],
     includeHistory = false,
     budget = BUDGET_TOKENS,
-    reserve = RESERVE_TOKENS,
+    reserve: reserveAsked = RESERVE_TOKENS,
     weights = WEIGHTS,
     scaling = SCALING,
     limit = 10,
+    minRelevance = store.minRelevance ?? 0,
   } = opts;
+  // The reserve is always below the budget, so some room stays for records that are not importance 3.
+  const reserve = Math.max(0, Math.min(reserveAsked, budget - 1));
   const filters = { namespace, asOf, features, includeHistory };
 
   const fromStore = await store.query(filters, text, limit);
@@ -35,7 +41,7 @@ export async function retrieve(store, opts) {
   const kept = [];
   for (const c of fromStore) {
     if (!passes(c.record, filters)) { rejected.push({ id: c.record.id, why: whyRejected(c.record, filters) }); continue; }
-    if (!(c.raw > 0)) continue;
+    if (!(c.raw > minRelevance)) continue;
     kept.push(c);
   }
 
@@ -65,7 +71,10 @@ export async function retrieve(store, opts) {
   const skipped = [];
   const render = items => [headerFor(items.length), ...items.map(i => i.text)].join("\n");
 
-  for (const s of scored) {
+  // A header that does not fit the budget means nothing can be injected.
+  const headerFits = estimateTokens(render([])) <= budget;
+
+  for (const s of headerFits ? scored : []) {
     const ceiling = s.record.importance === 3 ? budget : budget - reserve;
     let text1 = line(s.record, s.record.summary);
     let shortened = false;
@@ -82,11 +91,13 @@ export async function retrieve(store, opts) {
       skipped.push({ id: s.record.id, why: "does not fit the budget" });
     }
   }
+  if (!headerFits) for (const s of scored) skipped.push({ id: s.record.id, why: "header alone exceeds the budget" });
 
-  const block = render(picked);
+  // Nothing relevant: inject nothing (no header either).
+  const block = picked.length ? render(picked) : "";
   return {
     block,
-    tokens: estimateTokens(block),
+    tokens: block ? estimateTokens(block) : 0,
     budget,
     items: picked.map(p => ({ id: p.record.id, score: p.score, relevance: p.relevance, recency: p.recency, importance: p.importance, shortened: p.shortened })),
     skipped,

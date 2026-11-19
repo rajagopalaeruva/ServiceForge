@@ -124,7 +124,7 @@ Required provenance (from the assignment): `source_task`, `timestamp`, `type_tag
 2. **Filter.** Drop records outside the namespace, later than `as_of`, outside the allowed `feature` tags, or with `status: superseded`. A flag `include_history` may return superseded records for a "why did this change" question. It is off by default.
 3. **Score.** `score = 0.60 * relevance + 0.25 * recency + 0.15 * importance`, each scaled 0 to 1.
    - Relevance is keyword overlap between the query and `keywords` plus `summary`, scaled by the best match.
-   - Recency is linear over the namespace's date range.
+   - Recency is linear over the date range of the candidates that pass the filters and the store limit: the oldest candidate scores 0, the newest 1, and a single candidate scores 1. It is not computed over the whole namespace (section 9).
    - Importance is `importance / 3`.
    - The weights are a starting point. The audit reports whether the replay result changes if they move by 0.1.
 4. **Budget.** The ceiling for the injected block is **500 tokens**. Without a tokenizer, tokens are estimated as characters divided by 4, and the audit states this. The budget is allocated as:
@@ -164,12 +164,15 @@ B2 must show all of these. The audit (B2 part 3) is done by an independent revie
 | Store | "Vector DB" for episodic | JSON store with keyword and metadata scoring | Corpus is small, and the owner chose it on 2026-11-17. |
 | Namespace | `repo:branch:env` | Same, plus a `feature` tag and an `as_of` date | One repo and one env make the three parts weak scoping alone. |
 | Live Feature 2 run | Wire into the Feature 2 pipeline | Replay of Feature 2 | Feature 2 is merged. |
+| Recency range | Section 7.3 as first approved: linear over the namespace's date range | Linear over the date range of the candidates that pass the filters and the store limit (added 2026-11-19) | The core computes it from what the store returns. A recency value therefore changes with the query, and one candidate always scores 1. Audit F-5; owner decision, see Amendments. |
+| Write path scope | Section 3: the post-turn hook writes episodic memory through the filter | The Stop hook writes decisions, ADRs and rules only. It writes `memory_store.extracted.json`, not `memory_store.json`, and writes no `episode` records. Bug records are not extracted. (added 2026-11-19) | The hook payload carries no turn content (`hook-probe-findings.md`), so the hook re-extracts documents. `adr-memory-store.md` is accepted and is not edited; this row records the difference. Audit F-8. |
 
 Known limits:
 - Token counts are estimates (characters / 4).
 - Keyword scoring misses paraphrases. A vector store would handle them better.
 - The memory store can go stale if a source file changes. The audit checks `source_path` exists and records the source's last change date, but does not re-verify the summary text.
 - The `Stop` hook payload and detached-process behaviour on Windows are unverified until B2.
+- Replay isolation depends on the caller. The read path does not enforce "Feature 2 may not read its own records". It relies on the caller passing `features` of `[1, "all"]` and the right `as_of` (2026-11-12 in the replay). A call with `features` including 2 and the same `as_of` returns `mem-f2-spec-eligibility`, which is dated on the replay day (audit F-13; documented, not changed).
 
 ## 10. B2 deliverables, mapped from this design
 
@@ -190,3 +193,14 @@ The read path, budget and checks must reach the store only through two functions
 This keeps the store replaceable. The decision to start with the JSON store is in `pipeline/memory/adr-memory-store.md` (status: proposed). After B2 passes, the same checks M-1 to M-9 may be run against ChromaDB and Qdrant adapters, as a learning exercise. The plan, setup steps and pitfalls are in `pipeline/memory/store-comparison.md`.
 
 The memory pipeline is written in Node (the sheet says "node scripts", and Node 22 is installed). It does not need Python. It does not touch the Java backend.
+
+## Amendments
+
+| Date | Change | Authority |
+|---|---|---|
+| 2026-11-19 | **F-5.** Section 7.3 now says recency is linear over the date range of the candidates that pass the filters and the store limit, not over the namespace. A row was added to section 9. The code was not changed. | Made at the owner's instruction in chat ("yes to recommended"), Rajagopal Aeruva, recorded by the assistant. |
+| 2026-11-19 | **F-7, similarity floor.** After the hard filters, a candidate whose raw relevance is not above a per-store minimum is dropped before scaling, so a query with no real match injects nothing (empty block, 0 tokens). The JSON store uses 0 (raw keyword overlap must be above 0). Chroma and Qdrant use a cosine floor, `MIN_COSINE` in `src/config.mjs`, set to 0.283 from measured scores. Numbers and trade-off: `memory-audit-resolution.md`. | Same. |
+| 2026-11-19 | **F-8.** Section 9 now records that the Stop hook writes decisions, ADRs and rules only, writes `memory_store.extracted.json` and not `memory_store.json`, and writes no `episode` records. `adr-memory-store.md` was not edited. | Same. |
+| 2026-11-19 | **F-13, note.** Section 9 known limits now say that replay isolation depends on the caller passing `features` of `[1, "all"]` and the right `as_of`. The code was not changed. | Same. |
+
+No approval status line in this file was changed by these amendments.

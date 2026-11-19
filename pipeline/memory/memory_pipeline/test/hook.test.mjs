@@ -1,6 +1,6 @@
 // M-9: the Stop hook is non-blocking, safe to repeat, and cannot fail the session.
 // Real processes, with state redirected to a temp folder so the real log, lock and store are never touched.
-import { describe, it } from "node:test";
+import { describe, it, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
@@ -12,9 +12,18 @@ const LAUNCHER = path.join(PIPELINE_DIR, "src", "hook-launch.mjs");
 const HOOK_FILE = path.join(REPO_ROOT, ".kiro", "hooks", "memory-sync.json");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+// Temporary state folders are removed when the file's tests are done, once no writer still holds a lock in them (F-17).
+const states = [];
+after(async () => {
+  const end = Date.now() + 20000;
+  while (Date.now() < end && states.some(s => fs.existsSync(s.lock))) await sleep(200);
+  await sleep(300);
+  for (const s of states) fs.rmSync(s.dir, { recursive: true, force: true });
+});
+
 function newState() {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), "memtest-hook-"));
-  return {
+  const state = {
     dir,
     log: () => (fs.existsSync(path.join(dir, "sync.log")) ? fs.readFileSync(path.join(dir, "sync.log"), "utf8") : ""),
     lock: path.join(dir, ".sync.lock"),
@@ -22,6 +31,8 @@ function newState() {
     records: () => (fs.existsSync(path.join(dir, "memory_store.extracted.json"))
       ? JSON.parse(fs.readFileSync(path.join(dir, "memory_store.extracted.json"), "utf8")).records.length : 0),
   };
+  states.push(state);
+  return state;
 }
 
 /** Runs the launcher exactly as the hook does (payload on STDIN) and times it. */
@@ -93,6 +104,8 @@ describe("M-9: Stop hook (background sync)", () => {
     assert.ok(await waitFor(() => /skipped: another sync is running/.test(s.log())));
     assert.equal(results(s.log()).length, 0);
     assert.equal(s.records(), 0);
+    assert.equal(fs.readFileSync(s.lock, "utf8"), "99999", "the skipped run touched the other run's lock");
+    fs.rmSync(s.lock);
   });
 
   it("a failing writer cannot fail the hook: it exits 0, logs the error and releases the lock", async () => {
@@ -103,12 +116,13 @@ describe("M-9: Stop hook (background sync)", () => {
     assert.ok(await waitFor(() => !fs.existsSync(s.lock)), "lock was left behind after an error");
   });
 
-  it("garbage, empty or missing STDIN does not break the launcher", () => {
+  it("garbage, empty or missing STDIN does not break the launcher", async () => {
     for (const input of ["", "not json {{{", "\u0000\u0001", undefined]) {
       const s = newState();
       const r = launch(s, { MEMORY_SYNC_DELAY_MS: "1500" }, input);
       assert.equal(r.status, 0, `status ${r.status} for ${JSON.stringify(input)}`);
       assert.ok(r.ms < 2500, `${r.ms} ms`);
+      assert.ok(await waitFor(() => results(s.log()).length === 1), `writer did not finish:\n${s.log()}`);
     }
   });
 

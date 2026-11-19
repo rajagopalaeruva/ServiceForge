@@ -27,6 +27,7 @@
       "source_task": "BUG-001",
       "source_path": "pipeline/decisions/feature-1-decisions.md#decision-overlap-detection-compares-exact-start-times-not-intervals",
       "timestamp": "2026-11-11", "importance": 1,
+      "note": "2026-11-11 is the date this decision was superseded (BUG-001 fix, commit c29c12a), not the date it was made. It was already in the first commit on 2026-11-10 (0d3b0cd).",
       "summary": "Superseded: the original overlap check rejected a booking only when its start time exactly matched an existing booking's start time. It did not compare intervals.",
       "keywords": ["overlap", "start", "time", "exact", "check", "booking", "conflict"]
     },
@@ -74,6 +75,7 @@
       "source_task": "BUG-003",
       "source_path": "pipeline/bugs/bug-003-validation-error-contract.md",
       "timestamp": "2026-11-12", "importance": 2,
+      "note": "True as of 2026-11-12 (the replay date). The bug record now says Closed (2026-11-17); this record was not updated, and the store has no re-check date.",
       "summary": "BUG-003: validation failures return Spring's default 400 body, not an ApiError, because there is no global exception handler. Reported 2026-11-12 and not yet fixed.",
       "keywords": ["bug", "validation", "apierror", "400", "handler", "error", "exception"]
     },
@@ -83,7 +85,7 @@
       "source_task": "BUG-004",
       "source_path": "pipeline/bugs/bug-004-non-scheduled-jobs-block-calendar.md",
       "timestamp": "2026-11-12", "importance": 2,
-      "summary": "BUG-004: completed and cancelled jobs still block a technician's calendar. It is a requirement gap routed to the BA, with no fix until the policy is settled.",
+      "summary": "BUG-004: completed and cancelled jobs would still block a technician's calendar. It is latent, because no endpoint can change a job's status yet. It is a requirement gap routed to the BA, with no fix until the policy is settled.",
       "keywords": ["bug", "completed", "cancelled", "status", "calendar", "job", "scheduled", "technician", "requirement"]
     },
     {
@@ -119,6 +121,7 @@
       "source_task": "BUG-003",
       "source_path": "pipeline/rules/api-error-contract.md",
       "timestamp": "2026-11-17", "importance": 3,
+      "note": "The rule document carries no date; 2026-11-17 is the date of its first commit (8872841, the BUG-003 fix).",
       "summary": "Every 4xx response must carry an ApiError body. Request-level 400 mapping lives in one shared handler; new 404 and 409 outcomes use their own exception types, mapped centrally.",
       "keywords": ["apierror", "400", "404", "409", "handler", "error", "contract", "exception"]
     },

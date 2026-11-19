@@ -6,8 +6,9 @@ import crypto from "node:crypto";
 import { QdrantClient } from "@qdrant/js-client-rest";
 import { DefaultEmbeddingFunction } from "@chroma-core/default-embed";
 import { validateRecord } from "../record.mjs";
+import { MIN_COSINE } from "../config.mjs";
 
-/** Qdrant point ids must be integers or UUIDs. This turns a record id into a stable UUID, so re-writing the same record overwrites it. */
+/** Qdrant point ids must be integers or UUIDs. This turns a store key (namespace::id) into a stable UUID, so re-writing the same record overwrites it. */
 export function uuidFor(recordId) {
   const h = crypto.createHash("sha1").update(`serviceforge-memory:${recordId}`).digest();
   h[6] = (h[6] & 0x0f) | 0x50;   // version 5 layout
@@ -19,6 +20,7 @@ export function uuidFor(recordId) {
 export class QdrantStore {
   constructor({ collection = "memory_replay", host = "localhost", port = 6333 } = {}) {
     this.name = collection;
+    this.minRelevance = MIN_COSINE;   // cosine floor, see config.mjs
     this.client = new QdrantClient({ host, port });
     this.embedder = new DefaultEmbeddingFunction();
     this._ready = false;
@@ -55,7 +57,7 @@ export class QdrantStore {
     await this.client.upsert(this.name, {
       wait: true,
       points: [{
-        id: uuidFor(record.id),
+        id: uuidFor(`${record.namespace}::${record.id}`),
         vector,
         payload: {
           key: record.id, namespace: record.namespace, feature: String(record.feature),

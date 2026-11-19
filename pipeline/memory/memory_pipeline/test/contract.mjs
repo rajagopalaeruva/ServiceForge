@@ -163,5 +163,47 @@ export function runContract(label, makeStore) {
       const b = await retrieve(store, replay());
       assert.deepEqual(a.items, b.items);
     });
+
+    it("F-4 collision: the same record id in another namespace is a separate record, not an overwrite", async () => {
+      const other = "collide:main:dev";
+      const original = seed().find(r => r.id === "mem-f1-buffer-45");
+      const copy = {
+        ...original, namespace: other, status: "current",
+        summary: "A different namespace holds its own record under the same id, with a different travel buffer of 30 minutes.",
+      };
+      const before = (await store.all()).filter(r => r.id === original.id);
+      assert.equal(before.length, 1);
+      const res = await ingest(store, [copy], { repoRoot: REPO_ROOT });
+      assert.deepEqual(res.discarded, []);
+      const after = (await store.all()).filter(r => r.id === original.id);
+      assert.deepEqual(after.map(r => r.namespace).sort(), [REPLAY_NAMESPACE, other].sort());
+      assert.equal(after.find(r => r.namespace === REPLAY_NAMESPACE).summary, original.summary, "the first namespace's record was overwritten");
+      // Each namespace still reads its own record.
+      assert.ok(ids(await retrieve(store, replay())).includes(original.id));
+      const theirs = await retrieve(store, { namespace: other, asOf: REPLAY_AS_OF, features: REPLAY_FEATURES, text: "travel buffer 30 minutes" });
+      assert.deepEqual(ids(theirs), [original.id]);
+      assert.match(theirs.block, /30 minutes/);
+      // Writing it again does not duplicate either record.
+      await ingest(store, [copy], { repoRoot: REPO_ROOT });
+      assert.equal((await store.all()).filter(r => r.id === original.id).length, 2);
+    });
+
+    it("F-7 floor: a query with no real match injects nothing", async () => {
+      for (const text of ["zebra giraffe quantum unrelated nonsense words", "recipe for banana bread", "football world cup final score"]) {
+        const r = await retrieve(store, replay({ text }));
+        assert.deepEqual(ids(r), [], `${text}: got ${ids(r)}`);
+        assert.equal(r.block, "");
+        assert.equal(r.tokens, 0);
+      }
+      // The floor must not hide real matches.
+      assert.ok(ids(await retrieve(store, replay())).length >= 3);
+    });
+
+    it("F-17: an empty feature list returns nothing instead of failing", async () => {
+      const r = await retrieve(store, replay({ features: [] }));
+      assert.deepEqual(ids(r), []);
+      const direct = await store.query({ namespace: REPLAY_NAMESPACE, asOf: REPLAY_AS_OF, features: [], includeHistory: false }, TASK_QUERY, 10);
+      assert.deepEqual(direct, []);
+    });
   });
 }

@@ -1,11 +1,11 @@
-import { describe, it, before } from "node:test";
+import { describe, it, before, after } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
-import { extractAll, shorten, stripMd } from "../src/extract.mjs";
-import { sync, plan } from "../src/sync.mjs";
+import { extractAll, shorten, stripMd, saysSuperseded, earliestDate, EXTRACTOR_VERSION } from "../src/extract.mjs";
+import { sync, plan, STALE_REASON, hasDrift } from "../src/sync.mjs";
 import { ingest } from "../src/retain.mjs";
 import { retrieve } from "../src/core.mjs";
 import { JsonStore } from "../src/stores/json-store.mjs";
@@ -13,7 +13,10 @@ import { REPO_ROOT, EXTRACT_SOURCES_FILE, REPLAY_AS_OF, REPLAY_NAMESPACE, REPLAY
 import { TASK_QUERY } from "./contract.mjs";
 
 const config = JSON.parse(fs.readFileSync(EXTRACT_SOURCES_FILE, "utf8"));
-const tmpDir = prefix => fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+// Every temporary folder is removed when the file's tests are done (finding F-17).
+const made = [];
+const tmpDir = prefix => { const d = fs.mkdtempSync(path.join(os.tmpdir(), prefix)); made.push(d); return d; };
+after(() => { for (const d of made) fs.rmSync(d, { recursive: true, force: true }); });
 const freshStore = () => new JsonStore(path.join(tmpDir("memtest-ext-"), "store.json"));
 const sha = f => crypto.createHash("sha1").update(fs.readFileSync(f)).digest("hex");
 const ids = r => r.items.map(i => i.id);
@@ -190,7 +193,40 @@ describe("sync: a changed or removed source section is detected (temporary copy 
     assert.match(rec.summary, /50 minutes/);
   });
 
-  it("a deleted section is reported as removed and its record is kept, not deleted", async () => {
+  it("a deleted section: its record is kept but marked superseded, hidden by default, visible with history, and a second sync changes nothing", async () => {
+    const { root, file, store } = await setup();
+    const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
+    // Remove the CURRENT "buffered interval" decision, so the record really changes status.
+    const start = text.indexOf("## Decision: buffered interval detection");
+    const next = text.indexOf("\n## ", start + 5);
+    assert.ok(start > 0, "test setup: section not found");
+    fs.writeFileSync(file, text.slice(0, start) + (next === -1 ? "" : text.slice(next + 1)));
+    const { candidates } = extractAll(cfg, { repoRoot: root });
+    assert.ok(!candidates.some(c => c.id === bufferedId));
+
+    const dry = await sync(store, candidates, { repoRoot: root, dryRun: true });
+    assert.deepEqual(dry.removed, [bufferedId]);
+    assert.equal((await store.all()).find(x => x.id === bufferedId).status, "current", "a dry run must not write");
+
+    const r = await sync(store, candidates, { repoRoot: root });
+    assert.deepEqual(r.removed, [bufferedId]);
+    const rec = (await store.all()).find(x => x.id === bufferedId);
+    assert.ok(rec, "record was deleted");
+    assert.equal(rec.status, "superseded");
+    assert.equal(rec.stale_reason, "source section no longer found");
+    assert.equal(rec.stale_reason, STALE_REASON);
+
+    const q = { namespace: REPLAY_NAMESPACE, asOf: REPLAY_AS_OF, features: REPLAY_FEATURES, text: "buffered interval booking overlap 45 minutes" };
+    assert.ok(!ids(await retrieve(store, q)).includes(bufferedId), "a stale record is still returned by default");
+    assert.ok(ids(await retrieve(store, { ...q, includeHistory: true })).includes(bufferedId), "history does not show it");
+
+    const again = await sync(store, candidates, { repoRoot: root });
+    assert.deepEqual([again.added, again.changed, again.removed, again.written], [[], [], [], []]);
+    assert.equal(hasDrift(again), false);
+    assert.equal(hasDrift(await sync(store, candidates, { repoRoot: root, dryRun: true })), false);
+  });
+
+  it("a section that was already superseded and then deleted is kept and gets the stale reason", async () => {
     const { root, file, store } = await setup();
     const text = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
     const start = text.indexOf("## Decision: overlap detection compares exact start times");
@@ -199,7 +235,60 @@ describe("sync: a changed or removed source section is detected (temporary copy 
     const { candidates } = extractAll(cfg, { repoRoot: root });
     const r = await sync(store, candidates, { repoRoot: root });
     assert.deepEqual(r.removed, [exactId]);
-    assert.ok((await store.all()).some(x => x.id === exactId), "record was deleted");
+    const rec = (await store.all()).find(x => x.id === exactId);
+    assert.ok(rec, "record was deleted");
+    assert.deepEqual([rec.status, rec.stale_reason], ["superseded", STALE_REASON]);
+  });
+
+  it("a renamed heading: the old record is superseded and the new one is stored, not discarded as a duplicate", async () => {
+    const { root, file, store } = await setup();
+    const original = fs.readFileSync(file, "utf8");
+    const renamed = original.replace("## Decision: buffered interval detection", "## Decision: buffered interval overlap detection");
+    assert.notEqual(renamed, original, "test setup: heading not found");
+    fs.writeFileSync(file, renamed);
+    const newId = "mem-x-f1-buffered-interval-overlap-detection";
+    const { candidates } = extractAll(cfg, { repoRoot: root });
+    assert.ok(candidates.some(c => c.id === newId), "test setup: renamed section not extracted");
+
+    const r = await sync(store, candidates, { repoRoot: root });
+    assert.deepEqual(r.added, [newId]);
+    assert.deepEqual(r.removed, [bufferedId]);
+    assert.deepEqual(r.discarded, [], "the renamed record was discarded as a duplicate");
+    const all = await store.all();
+    assert.equal(all.find(x => x.id === bufferedId).status, "superseded");
+    assert.equal(all.find(x => x.id === newId).status, "current");
+
+    const q = { namespace: REPLAY_NAMESPACE, asOf: REPLAY_AS_OF, features: REPLAY_FEATURES, text: "buffered interval booking overlap 45 minutes" };
+    const got = ids(await retrieve(store, q));
+    assert.ok(got.includes(newId) && !got.includes(bufferedId), `got ${got}`);
+    const again = await sync(store, candidates, { repoRoot: root });
+    assert.equal(hasDrift(again), false);
+  });
+
+  it("a stale record whose section comes back is restored", async () => {
+    const { root, file, store } = await setup();
+    const original = fs.readFileSync(file, "utf8");
+    fs.writeFileSync(file, original.replace("## Decision: buffered interval detection", "## Decision: something else entirely for now"));
+    await sync(store, extractAll(cfg, { repoRoot: root }).candidates, { repoRoot: root });
+    assert.equal((await store.all()).find(x => x.id === bufferedId).status, "superseded");
+    fs.writeFileSync(file, original);
+    const back = extractAll(cfg, { repoRoot: root }).candidates;
+    const r = await sync(store, back, { repoRoot: root });
+    assert.deepEqual(r.changed, [bufferedId]);
+    const rec = (await store.all()).find(x => x.id === bufferedId);
+    assert.equal(rec.status, "current");
+    assert.equal(rec.stale_reason, undefined);
+    assert.equal(hasDrift(await sync(store, back, { repoRoot: root })), false);
+  });
+
+  it("a same-id record in another namespace is neither compared with nor marked stale (F-4)", async () => {
+    const { root, store } = await setup();
+    const other = { ...(await store.all()).find(x => x.id === bufferedId), namespace: "other:main:dev" };
+    await store.write(other);
+    const { candidates } = extractAll(cfg, { repoRoot: root });
+    const r = await sync(store, candidates, { repoRoot: root });
+    assert.equal(hasDrift(r), false);
+    assert.equal((await store.all()).filter(x => x.id === bufferedId).length, 2);
   });
 
   it("a section with no prose paragraph is skipped with a reason, not written", () => {
@@ -226,5 +315,125 @@ describe("extractor helpers", () => {
   });
   it("stripMd removes links, bold and code", () => {
     assert.equal(stripMd("**Label:** see [BUG-001](../bugs/b.md) for `x + 1`."), "Label: see BUG-001 for x + 1.");
+  });
+});
+
+describe("extractor: status and date reading (F-3)", () => {
+  it("saysSuperseded ignores a negated mention and still finds a real one", () => {
+    for (const no of [
+      "This rule is not superseded by anything", "never superseded", "It is no longer superseded", "it isn't superseded",
+      "it isn’t superseded", "Decision: example not superseded",
+    ]) assert.equal(saysSuperseded(no), false, no);
+    for (const yes of [
+      "**Lifecycle:** superseded by the buffered check", "Historical approach (superseded): the old way", "superseded",
+      "This was not planned, but the rule was later superseded by ADR-004",
+    ]) assert.equal(saysSuperseded(yes), true, yes);
+    assert.equal(saysSuperseded("not superseded at first, then superseded by X"), true);
+    assert.equal(saysSuperseded("a notation that is Superseded"), true);
+  });
+
+  it("earliestDate takes the earliest real date and skips impossible ones", () => {
+    assert.equal(earliestDate("verified on 2026-11-11, review 2027-01-01, first seen 2026-10-02"), "2026-10-02");
+    assert.equal(earliestDate("bad 2026-13-45 and good 2026-12-01"), "2026-12-01");
+    assert.equal(earliestDate("only 2026-02-30 here"), null);
+    assert.equal(earliestDate("no dates"), null);
+  });
+
+  const rel = "pipeline/decisions/feature-1-decisions.md";
+  const one = body => {
+    const root = tmpDir("memtest-repo-");
+    const dest = path.join(root, rel);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.writeFileSync(dest, `# Log\n\n${body}\n`);
+    const r = extractAll({ namespace: REPLAY_NAMESPACE, sources: [{ kind: "decision-log", path: rel, feature: 1, defaultDate: "2026-11-11" }] }, { repoRoot: root });
+    return r.candidates;
+  };
+
+  it("a section that says 'not superseded' stays current", () => {
+    const [c] = one("## Decision: example not superseded\n\nThis rule is not superseded by anything and stays in force for every job.\n");
+    assert.equal(c.status, "current");
+    assert.equal(c.importance, 2);
+  });
+
+  it("a section that really is superseded is superseded", () => {
+    const [c] = one("## Decision: old way\n\nThe old check compared start times only.\n\n**Lifecycle:** superseded by the interval check.\n");
+    assert.equal(c.status, "superseded");
+  });
+
+  it("the record date is the earliest date in the section, not the first or a later review date", () => {
+    const [c] = one("## Decision: dated\n\nVerified on 2026-11-11 and reviewed again 2026-11-14, next review 2027-01-01 for this rule.\n\nFirst seen 2026-11-05.\n");
+    assert.equal(c.timestamp, "2026-11-05");
+    assert.equal(c.note, undefined);
+  });
+});
+
+describe("extractor: source_hash covers the source entry settings and the extractor version (F-9)", () => {
+  const rel = "pipeline/decisions/feature-1-decisions.md";
+  const root = () => {
+    const r = tmpDir("memtest-repo-");
+    copyInto(r, rel);
+    return r;
+  };
+  const entry = { kind: "decision-log", path: rel, feature: 1, defaultDate: "2026-11-11" };
+  const hashes = (e, ns = REPLAY_NAMESPACE, r) => Object.fromEntries(extractAll({ namespace: ns, sources: [e] }, { repoRoot: r }).candidates.map(c => [c.id, c.source_hash]));
+
+  it("changing defaultDate, feature or namespace changes every hash of that source", () => {
+    const r = root();
+    const base = hashes(entry, REPLAY_NAMESPACE, r);
+    for (const other of [hashes({ ...entry, defaultDate: "2026-11-12" }, REPLAY_NAMESPACE, r), hashes({ ...entry, feature: 2 }, REPLAY_NAMESPACE, r), hashes(entry, "other:main:dev", r)]) {
+      const ids = Object.keys(base);
+      assert.ok(ids.length >= 3);
+      // a changed feature also changes the id prefix, so compare by position
+      assert.deepEqual(Object.values(other).filter((h, i) => h === Object.values(base)[i]), []);
+    }
+  });
+
+  it("the same settings give the same hashes, and the version constant exists and is above 1", () => {
+    const r = root();
+    assert.deepEqual(hashes(entry, REPLAY_NAMESPACE, r), hashes({ ...entry }, REPLAY_NAMESPACE, r));
+    assert.ok(Number.isInteger(EXTRACTOR_VERSION) && EXTRACTOR_VERSION >= 2);
+  });
+
+  it("sync reports a changed defaultDate as changed and rewrites the assumed date", async () => {
+    const r = root();
+    const store = freshStore();
+    const first = extractAll({ namespace: REPLAY_NAMESPACE, sources: [entry] }, { repoRoot: r });
+    await sync(store, first.candidates, { repoRoot: r });
+    const undated = first.candidates.find(c => c.note);
+    assert.ok(undated, "test setup: no undated section");
+    const second = extractAll({ namespace: REPLAY_NAMESPACE, sources: [{ ...entry, defaultDate: "2026-11-15" }] }, { repoRoot: r });
+    const res = await sync(store, second.candidates, { repoRoot: r });
+    assert.ok(res.changed.includes(undated.id), `changed: ${res.changed}`);
+    assert.equal((await store.all()).find(x => x.id === undated.id).timestamp, "2026-11-15");
+  });
+});
+
+describe("extractor: ADR status must agree between the index and the ADR file (F-9)", () => {
+  const dir = "pipeline/decisions/adr";
+  function adrRepo(indexStatus, fileStatus) {
+    const root = tmpDir("memtest-repo-");
+    fs.mkdirSync(path.join(root, dir), { recursive: true });
+    fs.writeFileSync(path.join(root, dir, "_index.md"),
+      `# Index\n\n| ADR | Title | Decision | Status | Feature | Drivers |\n|---|---|---|---|---|---|\n` +
+      `| [ADR-009](ADR-009-x.md) | Use one lock | One lock around stock changes. | ${indexStatus} | 2 | FR-1 |\n`);
+    fs.writeFileSync(path.join(root, dir, "ADR-009-x.md"), `---\nstatus: ${fileStatus}\ndate: 2026-11-17\nfeature: 2\n---\n\n# ADR-009: Use one lock\n`);
+    return root;
+  }
+  const src = { kind: "adr-index", path: `${dir}/_index.md`, defaultDate: "2026-11-17" };
+  const run = root => extractAll({ namespace: REPLAY_NAMESPACE, sources: [src] }, { repoRoot: root });
+
+  it("agreeing statuses give a record", () => {
+    const r = run(adrRepo("accepted", "accepted"));
+    assert.deepEqual(r.candidates.map(c => [c.id, c.status]), [["mem-x-adr-009", "current"]]);
+    assert.deepEqual(r.skipped, []);
+  });
+
+  it("disagreeing statuses skip the record with a clear reason", () => {
+    for (const [index, file] of [["accepted", "proposed"], ["accepted", "superseded"], ["proposed", "accepted"]]) {
+      const r = run(adrRepo(index, file));
+      assert.deepEqual(r.candidates, [], `${index} vs ${file}`);
+      assert.equal(r.skipped.length, 1);
+      assert.match(r.skipped[0].reason, /status disagrees: index says "\w+", ADR file says "\w+"; not guessing/);
+    }
   });
 });

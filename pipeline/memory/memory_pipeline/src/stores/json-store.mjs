@@ -8,6 +8,9 @@ import { terms } from "../text.mjs";
 export { terms };
 
 export class JsonStore {
+  // JSON keyword scores are 0 when nothing matches, so "above 0" is the floor (core.mjs keeps only raw > minRelevance).
+  minRelevance = 0;
+
   constructor(file) { this.file = file; }
 
   _load() {
@@ -17,7 +20,7 @@ export class JsonStore {
 
   _save(records) {
     fs.mkdirSync(path.dirname(this.file), { recursive: true });
-    const tmp = `${this.file}.tmp`;
+    const tmp = `${this.file}.${process.pid}.${Date.now()}.tmp`;   // unique name, so two writers never share a temp file
     fs.writeFileSync(tmp, JSON.stringify({ records }, null, 2) + "\n", "utf8");
     fs.renameSync(tmp, this.file);
   }
@@ -26,11 +29,11 @@ export class JsonStore {
 
   async reset() { this._save([]); }
 
-  /** Upsert by id. Safe to call twice with the same record. */
+  /** Upsert by namespace + id. Safe to call twice with the same record. The same id in another namespace is a different record. */
   async write(record) {
     const problems = validateRecord(record);
     if (problems.length) throw new Error(`invalid record ${record?.id}: ${problems.join("; ")}`);
-    const records = this._load().filter(r => r.id !== record.id);
+    const records = this._load().filter(r => !(r.namespace === record.namespace && r.id === record.id));
     records.push(record);
     this._save(records);
   }

@@ -19,6 +19,11 @@ export const SYNC_LOG_FILE = path.join(STATE_DIR, "sync.log");
 export const SYNC_LOCK_FILE = path.join(STATE_DIR, ".sync.lock");
 export const SYNC_LOCK_MAX_AGE_MS = 120_000;
 
+// Minimum cosine similarity for the vector stores (Chroma, Qdrant): a hit at or below it is not relevant and is dropped (finding F-7).
+// 0.283 sits in the measured gap between the highest nonsense top hit (0.2798) and the lowest key-record score (0.2868);
+// the gap is only 0.007 wide. Numbers and trade-off: memory-audit-resolution.md. The JSON store uses 0 (raw keyword overlap must be above 0).
+export const MIN_COSINE = 0.283;
+
 // Approved in memory-architecture.md, sections 7.3 and 7.4.
 export const BUDGET_TOKENS = 500;
 export const RESERVE_TOKENS = 100;
