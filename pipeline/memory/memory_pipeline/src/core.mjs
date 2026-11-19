@@ -1,7 +1,7 @@
 // Read path (memory-architecture.md, section 7). One implementation for every store.
 import { passes, whyRejected } from "./filters.mjs";
 import { estimateTokens } from "./tokens.mjs";
-import { BUDGET_TOKENS, RESERVE_TOKENS, WEIGHTS } from "./config.mjs";
+import { BUDGET_TOKENS, RESERVE_TOKENS, WEIGHTS, SCALING } from "./config.mjs";
 
 const round = n => Math.round(n * 1e6) / 1e6;
 const firstSentence = s => s.split(/(?<=[.!?])\s+/)[0];
@@ -24,6 +24,7 @@ export async function retrieve(store, opts) {
     budget = BUDGET_TOKENS,
     reserve = RESERVE_TOKENS,
     weights = WEIGHTS,
+    scaling = SCALING,
     limit = 10,
   } = opts;
   const filters = { namespace, asOf, features, includeHistory };
@@ -39,11 +40,19 @@ export async function retrieve(store, opts) {
   }
 
   const maxRaw = Math.max(0, ...kept.map(c => c.raw));
+  const minRaw = Math.min(...kept.map(c => c.raw));
   const tsList = kept.map(c => c.record.ts);
   const minTs = Math.min(...tsList), maxTs = Math.max(...tsList);
 
+  // Relevance scaling. "max": raw / best. "minmax": (raw - worst) / (best - worst); one candidate, or all equal, scores 1.
+  const scaleRelevance = raw => {
+    if (maxRaw <= 0) return 0;
+    if (scaling === "minmax") return maxRaw === minRaw ? 1 : (raw - minRaw) / (maxRaw - minRaw);
+    return raw / maxRaw;
+  };
+
   const scored = kept.map(c => {
-    const relevance = maxRaw > 0 ? c.raw / maxRaw : 0;
+    const relevance = scaleRelevance(c.raw);
     const recency = maxTs === minTs ? 1 : (c.record.ts - minTs) / (maxTs - minTs);
     const importance = c.record.importance / 3;
     const score = weights.relevance * relevance + weights.recency * recency + weights.importance * importance;

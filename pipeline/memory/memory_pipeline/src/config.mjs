@@ -13,6 +13,9 @@ export const SEED_FILE = path.resolve(PIPELINE_DIR, "data", "replay-seed.json");
 export const BUDGET_TOKENS = 500;
 export const RESERVE_TOKENS = 100;
 export const WEIGHTS = { relevance: 0.60, recency: 0.25, importance: 0.15 };
+// "max" = divide by the best score (approved design, section 7.3). "minmax" = stretch best..worst to 1..0 (under trial).
+// MEMORY_SCALING lets the test suite and experiments try minmax without changing code.
+export const SCALING = process.env.MEMORY_SCALING ?? "max";
 
 // Replay premise: Feature 2 spec v1.0 was baselined on 2026-11-12.
 export const REPLAY_AS_OF = "2026-11-12";
