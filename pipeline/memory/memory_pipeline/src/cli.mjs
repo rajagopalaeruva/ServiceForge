@@ -2,7 +2,7 @@
 //   node src/cli.mjs ingest [--seed <file>] [--reset]     load records through the Retain/Discard filter
 //   node src/cli.mjs query --text "<task text>" [--as-of YYYY-MM-DD] [--namespace ns] [--features 1,all]
 //                          [--include-history] [--budget 500] [--json]
-// Store: --store json (default) or chroma. qdrant is added in a later B2 step.
+// Store: --store json (default), chroma or qdrant.
 import fs from "node:fs";
 import { DEFAULT_STORE_FILE, SEED_FILE, REPO_ROOT, REPLAY_AS_OF, REPLAY_NAMESPACE, BUDGET_TOKENS } from "./config.mjs";
 import { openStore } from "./open-store.mjs";

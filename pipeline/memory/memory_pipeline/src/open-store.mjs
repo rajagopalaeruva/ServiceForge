@@ -8,5 +8,9 @@ export async function openStore(kind = "json", opts = {}) {
     const { ChromaStore } = await import("./stores/chroma-store.mjs");
     return new ChromaStore({ collection: opts.collection ?? "memory_replay", host: opts.host, port: opts.port });
   }
-  throw new Error(`unknown store "${kind}" (json, chroma)`);
+  if (kind === "qdrant") {
+    const { QdrantStore } = await import("./stores/qdrant-store.mjs");
+    return new QdrantStore({ collection: opts.collection ?? "memory_replay", host: opts.host, port: opts.port });
+  }
+  throw new Error(`unknown store "${kind}" (json, chroma, qdrant)`);
 }
