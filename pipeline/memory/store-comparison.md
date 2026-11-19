@@ -2,7 +2,7 @@
 
 Purpose: compare the JSON store, ChromaDB and Qdrant by running the same data and queries through all three. This supports `pipeline/memory/adr-memory-store.md`.
 
-Status of the facts below: the product details come from the vendors' getting-started pages and the assistant's general knowledge, read on 2026-11-17. Check versions before relying on them. Nothing here has been installed or run yet.
+Status of the facts below: the product details come from the vendors' getting-started pages and the assistant's general knowledge, read on 2026-11-17. Check versions before relying on them. Sections 4.2 to 4.5 were run later (Chroma and Qdrant in Podman, driven from Node); section 7 records what was confirmed or corrected. Results: `store-results.md`.
 
 ## 1. How each one works
 
@@ -53,7 +53,7 @@ Run all of these from `pipeline/memory/`. Never use port 8080 (the working agree
 - To cap WSL resources, create `%USERPROFILE%\.wslconfig` with a `[wsl2]` section (for example `memory=4GB` and `processors=4`), then run `wsl --shutdown` and start the Podman machine again. The setting applies to every WSL distro, including Ubuntu, and the shutdown stops them.
 - A terminal opened before the install may not have `podman` on its PATH. Open a new one.
 - Use fully qualified image names (`docker.io/...`) so Podman does not prompt for a registry.
-- Not run yet: no container has been started and no image pulled.
+- Both containers were started and used later (section 7).
 
 ### 4.1 JSON store (baseline)
 1. No install. Create `memory_pipeline/` and `memory_store.json` in B2.
@@ -62,7 +62,7 @@ Run all of these from `pipeline/memory/`. Never use port 8080 (the working agree
 1. In `pipeline/memory/memory_pipeline/`: `npm init -y`, then `npm install chromadb @chroma-core/default-embed`.
 2. Start the server in a separate terminal: `npx chroma run --path ./chroma_data`. Keep it running.
 3. Connect: `new ChromaClient()` (defaults to localhost:8000).
-4. Create one collection per namespace, or one collection with a `namespace` metadata field. Store `feature`, `status`, `type_tag` and a numeric `ts` (epoch days or milliseconds) in the metadata, because range filters on dates are safest as numbers (to confirm in the docs).
+4. Create one collection per namespace, or one collection with a `namespace` metadata field. Store `feature`, `status`, `type_tag` and a numeric `ts` (epoch days or milliseconds) in the metadata, because range filters on dates are safest as numbers (confirmed: `{ ts: { $lte: 20261112 } }` works with Chroma 3.x; dates are stored as `YYYYMMDD` integers).
 5. Put the record `summary` in `documents` so Chroma embeds it. Query with `queryTexts` and a `where` filter for `status`, `feature` and `ts`.
 6. The first embedding call downloads the default model. It needs internet once.
 
@@ -111,3 +111,31 @@ Run all of these from `pipeline/memory/`. Never use port 8080 (the working agree
 - **Non-deterministic results.** Approximate search and model versions can reorder close scores. Compare the set of top results, not exact scores.
 - **Port clashes and left-running servers.** Stop the Chroma and Qdrant servers when done. Do not use port 8080.
 - **Committed data.** Add `chroma_data/` and `qdrant_storage/` to `.gitignore` before the first run, so binary stores are not staged.
+
+## 7. What we found by running it (added 2026-11-19)
+
+Numbers and per-check results are in `store-results.md`. This section keeps the lessons that change how to use the steps above.
+
+**Confirmed**
+- Chroma runs from Node against a Podman container with no Python (4.2, 4.3). A numeric `ts` range filter works.
+- Qdrant runs from Node against a Podman container (4.5). Both stores answered the same questions identically, because the same model and cosine score were used.
+- Podman works with the same flags as Docker. Both containers used named volumes. Chroma's data survived a Podman restart (checked). Qdrant's restart was not tested.
+
+**Corrected or added**
+- **Qdrant client method:** in `@qdrant/js-client-rest` 1.20 there is no `client.search`. Use `client.query(collection, { query: vector, limit, filter })`, which returns `{ points }`. Step 6 of 4.5 said "search".
+- **Qdrant ids:** point ids must be integers or UUIDs. A record id such as `mem-f1-buffer-45` has to be turned into a stable UUID, or kept in the payload.
+- **Chroma metadata:** values must be scalars. A mixed-type field (feature `1`, `2` or `all`) was stored as a string, and the whole record was kept as JSON in one metadata field.
+- **Distance:** set cosine explicitly when creating a Chroma collection, so that `1 - distance` is the similarity and matches Qdrant's score.
+- **Embeddings are the slow part, not the store:** about 218 ms per query in Node, against roughly 10 ms for the store round trip. Cache or batch embeddings first if speed ever matters.
+- **Podman machine resources:** `podman machine list` shows 8 CPUs and 2 GiB, but the WSL machine actually had about 15.7 GB and 16 CPUs (WSL defaults, no `.wslconfig`). The numbers in `machine list` are not the real limits for a WSL machine.
+- **A tool PATH quirk:** a terminal opened before installing Podman does not see `podman`. Open a new one.
+
+**Pitfalls that showed up in practice**
+- Without a `status` filter, the superseded rule ranked first in the vector stores (0.527 against 0.387 and 0.371 for the two correct records). Only the filter keeps it out.
+- A vector store that returns the whole corpus (here 9 candidates) makes relevance scaling matter little. The ranking then depends on the embedding model, which ranked a validation bug above the "finished job" bug for the query "can a part be reserved for a job that is already finished".
+- Keyword scoring (the JSON store) looks better than it is when the keyword lists are written by the same person who writes the test queries.
+
+**Still open**
+- Setup time was not measured.
+- Bug records are not extracted, so the extracted store has no episodic memory yet.
+- The hybrid keyword-plus-vector experiment (item 3 of the plan) was not done.
