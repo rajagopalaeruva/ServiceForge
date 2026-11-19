@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Memory sync (background)",
+      "trigger": "Stop",
+      "description": "After each agent turn, start a detached process that re-extracts the repo's decision logs, ADR index and rules into the extracted memory store (pipeline/memory/memory_store.extracted.json). Returns at once, never blocks or fails the turn, skips when another sync is running. Log: pipeline/memory/sync.log. To switch off, set enabled to false.",
+      "action": {
+        "type": "command",
+        "command": "node pipeline/memory/memory_pipeline/src/hook-launch.mjs"
+      },
+      "timeout": 10,
+      "enabled": true
+    }
+  ]
+}

@@ -1,2 +1,5 @@
 # Derived from the repo documents by `node memory_pipeline/src/cli.mjs sync`; rebuild it any time, do not commit it.
 memory_store.extracted.json
+# Background sync (Stop hook): log and lock file
+sync.log
+.sync.lock

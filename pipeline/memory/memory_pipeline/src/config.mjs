@@ -8,10 +8,16 @@ export const REPO_ROOT = path.resolve(here, "..", "..", "..", "..");
 export const PIPELINE_DIR = path.resolve(here, "..");
 export const DEFAULT_STORE_FILE = path.resolve(PIPELINE_DIR, "..", "memory_store.json");
 export const SEED_FILE = path.resolve(PIPELINE_DIR, "data", "replay-seed.json");
-export const EXTRACT_SOURCES_FILE = path.resolve(PIPELINE_DIR, "data", "extract-sources.json");
+// MEMORY_SOURCES_FILE and MEMORY_STATE_DIR exist so tests can run the hook without touching real files.
+export const EXTRACT_SOURCES_FILE = process.env.MEMORY_SOURCES_FILE ?? path.resolve(PIPELINE_DIR, "data", "extract-sources.json");
+export const STATE_DIR = process.env.MEMORY_STATE_DIR ?? path.resolve(PIPELINE_DIR, "..");
 // Extracted records live apart from the hand-written replay seed, so the two never mix.
-export const EXTRACTED_STORE_FILE = path.resolve(PIPELINE_DIR, "..", "memory_store.extracted.json");
+export const EXTRACTED_STORE_FILE = path.join(STATE_DIR, "memory_store.extracted.json");
 export const EXTRACTED_COLLECTION = "memory_extracted";
+// Background sync (the Stop hook): log, lock, and how long a lock is trusted.
+export const SYNC_LOG_FILE = path.join(STATE_DIR, "sync.log");
+export const SYNC_LOCK_FILE = path.join(STATE_DIR, ".sync.lock");
+export const SYNC_LOCK_MAX_AGE_MS = 120_000;
 
 // Approved in memory-architecture.md, sections 7.3 and 7.4.
 export const BUDGET_TOKENS = 500;
