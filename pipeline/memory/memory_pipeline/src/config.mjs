@@ -8,6 +8,10 @@ export const REPO_ROOT = path.resolve(here, "..", "..", "..", "..");
 export const PIPELINE_DIR = path.resolve(here, "..");
 export const DEFAULT_STORE_FILE = path.resolve(PIPELINE_DIR, "..", "memory_store.json");
 export const SEED_FILE = path.resolve(PIPELINE_DIR, "data", "replay-seed.json");
+export const EXTRACT_SOURCES_FILE = path.resolve(PIPELINE_DIR, "data", "extract-sources.json");
+// Extracted records live apart from the hand-written replay seed, so the two never mix.
+export const EXTRACTED_STORE_FILE = path.resolve(PIPELINE_DIR, "..", "memory_store.extracted.json");
+export const EXTRACTED_COLLECTION = "memory_extracted";
 
 // Approved in memory-architecture.md, sections 7.3 and 7.4.
 export const BUDGET_TOKENS = 500;

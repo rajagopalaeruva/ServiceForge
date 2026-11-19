@@ -3,19 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { passes } from "../filters.mjs";
 import { validateRecord } from "../record.mjs";
+import { terms } from "../text.mjs";
 
-const STOP = new Set(("a an and are as at be by for from has have how in is it its of on or that the this to was were will with " +
-  "must may can not no do does into per than then their there these those which who what when where why one two").split(" "));
-
-export function terms(text) {
-  const out = new Set();
-  for (const w of String(text).toLowerCase().split(/[^a-z0-9_]+/)) {
-    if (!w || STOP.has(w)) continue;
-    const stem = w.length > 4 && w.endsWith("s") ? w.slice(0, -1) : w;   // crude plural strip
-    out.add(stem);
-  }
-  return out;
-}
+export { terms };
 
 export class JsonStore {
   constructor(file) { this.file = file; }

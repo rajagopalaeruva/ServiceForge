@@ -1,0 +1,16 @@
+{
+  "_about": "Sources the extractor reads. defaultDate is used only where the source section gives no date; the record then carries a `note` saying so. Dates here match the hand-written replay seed. Source files are never edited.",
+  "namespace": "serviceforge:main:dev",
+  "sources": [
+    { "kind": "decision-log", "path": "pipeline/decisions/feature-1-decisions.md", "feature": 1,
+      "defaultDate": "2026-11-11", "dateNote": "earliest dated Feature 1 record" },
+    { "kind": "decision-log", "path": "pipeline/decisions/feature-2-decisions.md", "feature": 2,
+      "defaultDate": "2026-11-17", "dateNote": "date of the Feature 2 ADR acceptances" },
+    { "kind": "adr-index", "path": "pipeline/decisions/adr/_index.md",
+      "defaultDate": "2026-11-17" },
+    { "kind": "rule", "path": "pipeline/rules/booking-conflicts.md",
+      "defaultDate": "2026-11-11", "dateNote": "date BUG-001 was verified" },
+    { "kind": "rule", "path": "pipeline/rules/api-error-contract.md",
+      "defaultDate": "2026-11-17", "dateNote": "date BUG-003 was closed" }
+  ]
+}

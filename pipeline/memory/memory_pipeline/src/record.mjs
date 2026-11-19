@@ -40,7 +40,7 @@ export function normalise(r) {
   return { keywords: [], supersedes: null, ...r, ts: tsOf(r.timestamp) };
 }
 
-function slug(heading) {
+export function slug(heading) {
   return heading.toLowerCase().replace(/[^a-z0-9 -]/g, "").trim().replace(/ /g, "-");
 }
 
