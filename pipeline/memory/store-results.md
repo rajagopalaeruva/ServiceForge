@@ -12,7 +12,7 @@ Every figure below was produced by a command listed in section 8. Where somethin
 
 ## 1. Test results
 
-`npm test` (Node's built-in runner), run 2026-11-19 after the audit fixes: **175 of 175 pass, 0 skipped, 0 failed** (30 suites, about 62 s, containers up). Before the fixes the suite had 66 tests, all passing.
+`npm test` (Node's built-in runner), run 2026-11-20 after the importance change: **204 of 204 pass, 0 skipped, 0 failed** (35 suites, about 47 s, containers up). Before the audit fixes the suite had 66 tests, all passing. The per-suite counts below are from 2026-11-19 and were not recounted; the extractor suite gained 1 test on 2026-11-20.
 
 | Suite | Tests | Result |
 |---|---|---|
@@ -21,6 +21,7 @@ Every figure below was produced by a command listed in section 8. Where somethin
 | Contract, Qdrant (plus 1 id-mapping test) | 16 + 1 | pass |
 | Read path on a fake store (`core.test.mjs`) | 38 | pass |
 | Extractor and sync | 32 | pass |
+| Bug extractor (`test/bugs.test.mjs`, added 2026-11-20) | 28 | pass |
 | Record validation and Retain/Discard (`record.test.mjs`) | 26 | pass |
 | Lock (`lock.test.mjs`) | 10 | pass |
 | Command line (`cli.test.mjs`) | 9 | pass |
@@ -77,16 +78,19 @@ Findings:
 
 ## 4. Retrieval from extracted records only
 
-The extractor (`src/extract.mjs`) builds records from the decision logs, the ADR index and the rule files, with keywords taken from headings only (no hand tuning). Replay on these records alone:
+The extractor (`src/extract.mjs`) builds records from the decision logs, the ADR index, the rule files and, since 2026-11-20, the bug records in `pipeline/bugs/` (one `episode` record per `bug-N-*.md` file, current state only), with keywords taken from headings and titles only (no hand tuning). Replay on these records alone (Feature 2 task, `as_of` 2026-11-12, features `[1, "all"]`):
 
 | | JSON | Chroma | Qdrant |
 |---|---|---|---|
-| Records extracted | 16 (1 section skipped) | 16 | 16 |
-| Tokens | 312 | 312 | 312 |
-| Block | exactly the three needed facts | same | same |
+| Records extracted | 20 (1 section skipped), of which 4 are bug episodes | 20 | 20 |
+| Tokens, before bug records (16 records) | 312 | 312 | 312 |
+| Block, before bug records | exactly the three needed facts | same | same |
+| Tokens, with bug records (20 records), after the importance change | 426 | 487 | 487 |
+| Block, with bug records, after the importance change | BUG-001, buffered interval, 45-minute buffer, booking-conflicts rule (all three needed facts) | booking-conflicts rule, BUG-002, BUG-001, 45-minute buffer, buffered interval (all three needed facts) | same as Chroma |
+| "what went wrong before with the booking overlap check" returns BUG-001 | yes | yes | yes |
 | Superseded rule excluded by default, returned as history | yes | not run | not run |
 
-Caution: this is cleaner than section 3 partly because bug records are not extracted, so there are fewer distractors. It is not a like-for-like comparison with the seed. Chroma and Qdrant were queried on the extracted data through the CLI; the superseded-rule and leak checks for extracted data are in the JSON-store tests (`test/extract.test.mjs`) only.
+Importance of extracted records (changed 2026-11-20, option A): open bugs (`proposed`) get 1, resolved bugs keep the severity rule (S1/S2 3, S3 2, S4 1, none 2), and every `current` decision-log decision gets 3 (superseded 1); ADR-index and rule records are unchanged. Before this change the four bug lines (102 to 126 estimated tokens each) crowded out the needed facts, because BUG-002 and BUG-004 are dated 2026-11-12, one day after the facts. After it, all three needed facts are in the block within 500 tokens on all three stores (426, 487 and 487 tokens). Episode states are today's states, not the states on 2026-11-12. It is not a like-for-like comparison with the seed. Chroma and Qdrant were queried on the extracted data through the CLI; the superseded-rule and leak checks for extracted data are in the JSON-store tests (`test/extract.test.mjs`) only.
 
 ## 5. Learning columns
 
@@ -116,11 +120,11 @@ The accepted note lists three conditions ("Revisit when"). None is met.
 
 | Condition | Status |
 |---|---|
-| The corpus passes a few hundred records | No. 14 hand-written, 16 extracted. |
+| The corpus passes a few hundred records | No. 14 hand-written, 20 extracted. |
 | Paraphrase misses cause a wrong or empty result in the replay | Not conclusively. JSON missed one key record on the keyword query Q4, but it still returned other relevant records. The vector stores failed Q3 where JSON succeeded, though JSON's keywords favour it. The evidence is mixed and small. |
 | More than one agent or user must write at the same time | No. The hook writer and `cli.mjs sync` take the same owner-checked lock (exit code 4 when it is busy), and the JSON store is rewritten whole on each write. Concurrent writers would break this assumption. |
 
-No superseding note is needed now. Revisit when bug records are extracted (the corpus will grow and the keyword weakness will show more) or when a second writer appears.
+No superseding note is needed now. Bug records are extracted since 2026-11-20 (20 records). The Feature 2 block now misses needed facts on all three stores (section 4), so the store choice does not decide it; it is a ranking and budget question. Revisit when a second writer appears.
 
 ## 7. M-9 live evidence
 
@@ -145,12 +149,13 @@ From `pipeline/memory/memory_pipeline/` (containers up for the vector stores):
 - The seed's `keywords` and a few record dates were chosen by the author. Records carry a `note` where the source gives no date.
 - The relevance key in `scaling.mjs` is the author's judgment. Four queries over 9 candidates are not statistical evidence.
 - Hierarchical consolidation (design section 7.7) is documented and not built, as the design allows.
-- The extractor does not cover bug records, and its type, importance and some dates are rules of thumb. The format of the source documents is assumed.
+- The extractor reads two bug layouts (the template and the older BUG-001 layout) and skips a bug file that matches neither, with a reason. Type, importance and some dates are rules of thumb. The format of the source documents is assumed.
+- Bug episodes hold the current state of each bug, so the extracted store cannot replay a bug's state as of an earlier date. The replay uses the hand-written seed.
 - Setup times were not measured.
 - The design's `repo:branch:env` namespace has only one real value of `env` (`dev`) in this repository.
 - `MEMORY_SCALING`, `MEMORY_STATE_DIR`, `MEMORY_SOURCES_FILE` and `MEMORY_SYNC_DELAY_MS` exist for tests and experiments.
 - The code and the tests were written by the same author. The independent audit is the review of both.
-- The Stop hook writes decisions, ADRs and rules only. It writes `memory_store.extracted.json`, not `memory_store.json`, and it writes no `episode` records. Bug records are not extracted, so the hook never produces the BUG-001 episode. `adr-memory-store.md` is accepted and was not edited; the difference is recorded in `memory-architecture.md` section 9 (audit F-8).
+- The Stop hook writes decisions, ADRs, rules and bug records (4 `episode` records today). It writes `memory_store.extracted.json`, not `memory_store.json`. `adr-memory-store.md` is accepted and was not edited; the difference is recorded in `memory-architecture.md` section 9 (audit F-8).
 - Recency is computed over the candidates that pass the filters and the store limit, not over the namespace (design section 9, audit F-5).
-- The vector similarity floor (0.283) was calibrated on the 14 replay records and 8 nonsense queries. The gap between the best nonsense hit (0.2798) and the weakest key record (0.2868) is 0.007 wide, so a different model or corpus needs a new calibration. The floor was not calibrated on the extracted records.
+- The vector similarity floor (0.283) was calibrated on the 14 replay records and 8 nonsense queries. The gap between the best nonsense hit (0.2798) and the weakest key record (0.2868) is 0.007 wide, so a different model or corpus needs a new calibration. Re-measured on 2026-11-20 on the 20 extracted records (`node experiments/floor.mjs --extracted`): the best nonsense hit is 0.205 on Chroma and Qdrant, so the floor still drops every nonsense query there; the weakest key record is 0.212 (buffered interval for "overlap check"), below the floor. On JSON, "quarterly tax return deadline" now returns BUG-003 (raw 0.250, the word "return"). `MIN_COSINE` was not changed.
 - Replay isolation depends on the caller passing `features` of `[1, "all"]` and the right `as_of` (audit F-13).

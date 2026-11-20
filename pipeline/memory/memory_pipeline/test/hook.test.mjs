@@ -6,11 +6,14 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { REPO_ROOT, PIPELINE_DIR } from "../src/config.mjs";
+import { REPO_ROOT, PIPELINE_DIR, EXTRACT_SOURCES_FILE } from "../src/config.mjs";
+import { extractAll } from "../src/extract.mjs";
 
 const LAUNCHER = path.join(PIPELINE_DIR, "src", "hook-launch.mjs");
 const HOOK_FILE = path.join(REPO_ROOT, ".kiro", "hooks", "memory-sync.json");
 const sleep = ms => new Promise(r => setTimeout(r, ms));
+// The number of records the hook should write, from the same extractor and sources, so new source files do not break a literal.
+const EXPECTED = extractAll(JSON.parse(fs.readFileSync(EXTRACT_SOURCES_FILE, "utf8")), { repoRoot: REPO_ROOT }).candidates.length;
 
 // Temporary state folders are removed when the file's tests are done, once no writer still holds a lock in them (F-17).
 const states = [];
@@ -61,8 +64,8 @@ describe("M-9: Stop hook (background sync)", () => {
     assert.equal(r.stdout.trim(), "", "the hook must print nothing");
     assert.equal(results(s.log()).length, 0, "the writer cannot have finished inside the delay");
     assert.ok(await waitFor(() => results(s.log()).length === 1), `no result logged:\n${s.log()}`);
-    assert.match(results(s.log())[0], /json: added 16, changed 0/);
-    assert.equal(s.records(), 16);
+    assert.match(results(s.log())[0], new RegExp(`json: added ${EXPECTED}, changed 0`));
+    assert.equal(s.records(), EXPECTED);
     assert.ok(!fs.existsSync(s.lock), "lock was left behind");
   });
 
@@ -72,8 +75,8 @@ describe("M-9: Stop hook (background sync)", () => {
     assert.ok(await waitFor(() => results(s.log()).length === 1));
     launch(s);
     assert.ok(await waitFor(() => results(s.log()).length === 2));
-    assert.match(results(s.log())[1], /json: no change; unchanged 16/);
-    assert.equal(s.records(), 16);
+    assert.match(results(s.log())[1], new RegExp(`json: no change; unchanged ${EXPECTED}`));
+    assert.equal(s.records(), EXPECTED);
   });
 
   it("overlapping runs: one writes, the other skips", async () => {
@@ -84,7 +87,7 @@ describe("M-9: Stop hook (background sync)", () => {
     await sleep(300);
     assert.equal(results(s.log()).length, 1);
     assert.equal((s.log().match(/skipped: another sync is running/g) ?? []).length, 1);
-    assert.equal(s.records(), 16);
+    assert.equal(s.records(), EXPECTED);
   });
 
   it("a stale lock is removed and the sync still runs", async () => {

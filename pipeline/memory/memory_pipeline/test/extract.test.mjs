@@ -73,6 +73,15 @@ describe("extractor: real repo documents", () => {
     assert.equal(get("mem-x-f1-overlap-detection-compares-exact-start-times-not-intervals").importance, 1);
   });
 
+  it("importance: current decisions are 3 (every feature), superseded 1; ADR and rule records are unchanged", () => {
+    const decisions = result.candidates.filter(c => c.id.startsWith("mem-x-f") && c.type_tag === "decision");
+    assert.ok(decisions.length > 0);
+    for (const c of decisions) assert.equal(c.importance, c.status === "current" ? 3 : 1, c.id);
+    assert.ok(decisions.some(c => c.feature !== 1 && c.status === "current"), "expected a current decision outside Feature 1");
+    assert.equal(get("mem-x-rule-booking-conflicts").importance, 3);
+    for (const c of result.candidates.filter(c => /^mem-x-adr-/.test(c.id))) assert.equal(c.importance, 2, c.id);
+  });
+
   it("summaries are plain text, within the limit, and ids are well formed", () => {
     for (const c of result.candidates) {
       assert.ok(c.summary.length >= 25 && c.summary.length <= 600, `${c.id}: ${c.summary.length} chars`);
@@ -93,9 +102,9 @@ describe("extractor: real repo documents", () => {
   });
 
   it("is deterministic and never edits a source file", () => {
-    const files = [...new Set(config.sources.map(s => s.path))].map(p => path.join(REPO_ROOT, p));
-    const adrFiles = fs.readdirSync(path.join(REPO_ROOT, "pipeline/decisions/adr")).map(f => path.join(REPO_ROOT, "pipeline/decisions/adr", f));
-    const watched = [...files, ...adrFiles];
+    const files = [...new Set(config.sources.filter(s => s.path).map(s => s.path))].map(p => path.join(REPO_ROOT, p));
+    const listed = dir => fs.readdirSync(path.join(REPO_ROOT, dir)).map(f => path.join(REPO_ROOT, dir, f));
+    const watched = [...files, ...listed("pipeline/decisions/adr"), ...listed("pipeline/bugs")];
     const before = watched.map(sha);
     const again = extractAll(config, { repoRoot: REPO_ROOT });
     assert.deepEqual(again, result);
@@ -352,7 +361,7 @@ describe("extractor: status and date reading (F-3)", () => {
   it("a section that says 'not superseded' stays current", () => {
     const [c] = one("## Decision: example not superseded\n\nThis rule is not superseded by anything and stays in force for every job.\n");
     assert.equal(c.status, "current");
-    assert.equal(c.importance, 2);
+    assert.equal(c.importance, 3);
   });
 
   it("a section that really is superseded is superseded", () => {

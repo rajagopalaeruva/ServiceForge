@@ -2,11 +2,11 @@
 // Deterministic and read-only: it never edits a source file, and it never calls a model.
 // Candidates then go through the Retain/Discard filter in retain.mjs, exactly like the hand-written seed.
 //
-// Covers three well-structured source kinds (see data/extract-sources.json):
+// Covers four well-structured source kinds (see data/extract-sources.json):
 //   decision-log  "## Decision: ..." sections of pipeline/decisions/feature-N-decisions.md
 //   adr-index     the table in pipeline/decisions/adr/_index.md, plus each ADR's front matter
 //   rule          the "## Required invariant" section of pipeline/rules/*.md
-// Not covered: bug records (their layout differs between BUG-001 and BUG-002 to 004).
+//   bug-dir       one episode record per pipeline/bugs/bug-N-*.md (the template layout, and the older BUG-001 layout)
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
@@ -14,7 +14,7 @@ import { slug, tsOf } from "./record.mjs";
 import { terms } from "./text.mjs";
 
 // Bump when the extraction rules change. It is part of every source_hash, so the next sync re-checks every record.
-export const EXTRACTOR_VERSION = 2;
+export const EXTRACTOR_VERSION = 4;
 
 const MAX_SUMMARY = 550;           // retain.mjs rejects summaries over 600
 const DATES = /\b(\d{4}-\d{2}-\d{2})\b/g;
@@ -25,7 +25,7 @@ const read = (repoRoot, rel) => fs.readFileSync(path.resolve(repoRoot, rel), "ut
 
 /** Source entry settings that change what a record holds. They go into source_hash with the extractor version (finding F-9). */
 const configKey = (src, ctx) =>
-  `v${EXTRACTOR_VERSION}|feature=${src.feature ?? ""}|defaultDate=${src.defaultDate ?? ""}|namespace=${ctx.namespace}`;
+  `v${EXTRACTOR_VERSION}|feature=${src.feature ?? ""}|defaultDate=${src.defaultDate ?? ""}|dir=${src.dir ?? ""}|namespace=${ctx.namespace}`;
 
 /** The earliest real calendar date in the text, or null. Impossible dates such as 2026-13-45 are ignored. */
 export function earliestDate(text) {
@@ -108,7 +108,7 @@ function fromDecisionLog(src, ctx) {
       source_task: task ? task[1] : `Feature ${src.feature}`,
       source_path: where,
       timestamp: dated ?? src.defaultDate,
-      importance: superseded ? 1 : 2,
+      importance: superseded ? 1 : 3,
       summary,
       keywords: [...terms(stripMd(title))],
       source_hash: hash(`${configKey(src, ctx)}\n${heading}\n${body}`),
@@ -182,9 +182,104 @@ function fromRule(src, ctx) {
   };
 }
 
-const KINDS = { "decision-log": fromDecisionLog, "adr-index": fromAdrIndex, rule: fromRule };
+const BUG_FILE = /^bug-(\d+)-.*\.md$/;
 
-/** config = { namespace, sources: [{ kind, path, feature?, defaultDate, dateNote? }] } */
+/** Rows of the `| **Field** | Value |` table, by field name. */
+function metaTable(text) {
+  const meta = {};
+  for (const line of text.split("\n")) {
+    const m = /^\|\s*\*\*(.+?)\*\*\s*\|(.*)\|\s*$/.exec(line);
+    if (m) meta[m[1].trim()] = m[2].replace(/\\\|/g, "|").trim();
+  }
+  return meta;
+}
+
+/** Template layout: "1. Summary" and the "- **Root cause:**" bullet of "4. Root cause analysis". */
+function templateReader(sections) {
+  const sum = sections.find(s => /^1\.\s*Summary\s*$/i.test(s.heading));
+  if (!sum) return null;
+  const rca = sections.find(s => /^4\.\s*Root cause/i.test(s.heading));
+  const bullet = rca ? /^[-*]\s+\*\*Root cause:\*\*[ \t]*(\S.*)$/m.exec(rca.body)?.[1] : null;
+  const cause = bullet && !bullet.startsWith("<") ? stripMd(bullet) : null;
+  return { sum, cause: cause && { label: "Root cause", text: cause }, causeBody: rca?.body ?? "" };
+}
+
+/** Older BUG-001 layout: "Expected and actual behavior", then the start-time sentence from the evidence bullets, else the fix paragraph. */
+function oldReader(sections) {
+  const sum = sections.find(s => /^Expected and actual behavio(u)?r\s*$/i.test(s.heading));
+  if (!sum) return null;
+  const repro = sections.find(s => /^Reproduction and evidence/i.test(s.heading));
+  const fix = sections.find(s => /^Root cause and implemented fix/i.test(s.heading));
+  const line = (repro?.body ?? "").split("\n").find(l => /^[-*] /.test(l) && /start[- ]?time equality/i.test(l));
+  let cause = null;
+  if (line) cause = { label: "Root cause", text: stripMd(line.replace(/^[-*]\s+/, "")) };
+  if (!cause && fix) {
+    const p = firstProse(fix.body);
+    if (p) cause = { label: "Fix", text: stripMd(p) };
+  }
+  return { sum, cause, causeBody: `${repro?.body ?? ""}\n${fix?.body ?? ""}`, old: true };
+}
+
+function fromBugDir(src, ctx) {
+  const out = [], skipped = [];
+  const dirFull = path.resolve(ctx.repoRoot, src.dir);
+  if (!fs.existsSync(dirFull)) return { out, skipped: [{ source: src.dir, reason: "bug directory not found" }] };
+  const files = fs.readdirSync(dirFull).filter(f => BUG_FILE.test(f)).sort();
+  for (const file of files) {
+    const rel = `${src.dir}/${file}`;
+    const text = read(ctx.repoRoot, rel);
+    const num = BUG_FILE.exec(file)[1];
+    const titleM = /^# BUG-(\d+)\s*(?:[-\u2013\u2014]\s*)?(.*)$/m.exec(text);
+    if (!titleM || Number(titleM[1]) !== Number(num) || !titleM[2].trim()) { skipped.push({ source: rel, reason: "no '# BUG-N - title' line that matches the file name" }); continue; }
+    const title = titleM[2].trim();
+    const meta = metaTable(text);
+    const state = stripMd(meta.Status ?? "");
+    if (!state) { skipped.push({ source: rel, reason: "no Status cell" }); continue; }
+    const sections = splitSections(text);
+    const rd = templateReader(sections) ?? oldReader(sections);
+    const first = rd ? firstProse(rd.sum.body) : null;
+    const lead = first ? stripMd(first) : "";
+    if (!rd || lead.length < 25) { skipped.push({ source: rel, reason: "no usable summary" }); continue; }
+
+    const tail = `${rd.cause ? ` ${rd.cause.label}: ${rd.cause.text}` : ""} State: ${state}.`;
+    const room = MAX_SUMMARY - tail.length;
+    const head = room >= 25 ? shorten(lead, room) : null;
+    if (!head || head.length < 25) { skipped.push({ source: rel, reason: "summary does not fit in 550 characters without cutting the root cause or state" }); continue; }
+
+    const reported = meta["Reported by / date"];
+    const dated = reported !== undefined ? firstDate(reported) : earliestDate(text);
+    const sev = /\bS([1-4])\b/.exec(meta["Severity / reason"] ?? "")?.[1];
+    const status = /^(Verified|Closed)/i.test(state) ? "current" : "proposed";
+    const feat = /Feature (\d+)/.exec(meta["Affected feature"] ?? "")?.[1];
+    out.push({
+      ...base(ctx, src),
+      id: `mem-x-bug-${num}`,
+      feature: feat ? Number(feat) : "all",
+      type_tag: "episode",
+      status,
+      bug_state: state,
+      source_task: `BUG-${num}`,
+      source_path: `${rel}#${slug(rd.sum.heading)}`,
+      timestamp: dated ?? src.defaultDate,
+      importance: status === "proposed" ? 1 : sev === "1" || sev === "2" ? 3 : sev === "3" ? 2 : sev === "4" ? 1 : 2,
+      summary: `${head}${tail}`,
+      keywords: [...terms(stripMd(title))],
+      source_hash: hash(`${configKey(src, ctx)}\n${rel}\n${title}\n${state}\n${meta["Severity / reason"] ?? ""}\n${reported ?? ""}\n${meta["Affected feature"] ?? ""}\n${rd.sum.body}\n${rd.causeBody}`),
+      ...(dated ? {} : { note: `date assumed (${src.dateNote ?? "source gives none"}): ${src.defaultDate}` }),
+    });
+  }
+  return { out, skipped };
+}
+
+/** The first real calendar date in the text, in reading order, or null. */
+function firstDate(text) {
+  for (const m of text.matchAll(DATES)) { try { tsOf(m[1]); return m[1]; } catch { /* not a real date */ } }
+  return null;
+}
+
+const KINDS = { "decision-log": fromDecisionLog, "adr-index": fromAdrIndex, rule: fromRule, "bug-dir": fromBugDir };
+
+/** config = { namespace, sources: [{ kind, path (or dir, for bug-dir), feature?, defaultDate, dateNote? }] } */
 export function extractAll(config, { repoRoot }) {
   const ctx = { namespace: config.namespace, repoRoot };
   const candidates = [], skipped = [];

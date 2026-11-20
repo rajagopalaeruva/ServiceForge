@@ -11,6 +11,8 @@
     { "kind": "rule", "path": "pipeline/rules/booking-conflicts.md",
       "defaultDate": "2026-11-11", "dateNote": "date BUG-001 was verified" },
     { "kind": "rule", "path": "pipeline/rules/api-error-contract.md",
-      "defaultDate": "2026-11-17", "dateNote": "date BUG-003 was closed" }
+      "defaultDate": "2026-11-17", "dateNote": "date BUG-003 was closed" },
+    { "kind": "bug-dir", "dir": "pipeline/bugs", "defaultDate": "2026-11-12",
+      "dateNote": "date BUG-002 to BUG-004 were reported" }
   ]
 }

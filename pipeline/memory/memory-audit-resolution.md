@@ -191,3 +191,7 @@ The assistant sets no approval, sign-off or verified status. The fields below ar
 | Approved by | |
 | Date | |
 | Notes | |
+
+## After the audit
+
+- **F-8 (2026-11-20):** now addressed by the bug extractor. The source kind `bug-dir` in `src/extract.mjs` turns each `pipeline/bugs/bug-N-*.md` file into one `episode` record with the bug's current state, so the Stop hook now writes episodes (20 extracted records, 4 of them bugs). The design row in `memory-architecture.md` section 9 and its Amendments table record this and the replay limit; the audit report above is unchanged.

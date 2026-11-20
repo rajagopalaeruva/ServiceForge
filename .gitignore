@@ -14,3 +14,4 @@ frontend/.angular/
 
 # Personal Kiro steering (holds the owner's local notes-vault path); kept locally, not shared
 .kiro/steering/
+/pipeline/memory/memory_pipeline/node_modules/
