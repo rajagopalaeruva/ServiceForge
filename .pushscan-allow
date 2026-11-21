@@ -1,0 +1,7 @@
+# Paths that scripts/check-push.ps1 ignores. One glob per line; ** and * match any characters.
+# Only for files that contain deliberate FAKE secrets. Never list a path to hide a real one.
+
+# Memory pipeline: tests and audit notes use sample secrets to prove the filter rejects them.
+pipeline/memory/memory_pipeline/test/*
+pipeline/memory/memory-audit-report.md
+pipeline/memory/memory-audit-resolution.md
