@@ -361,7 +361,7 @@ class PushTests(Repo):
         self.assertTrue(self.scan()["passed"])
 
     def test_warn_passes_unless_strict(self):
-        self.commit({"b.txt": "ip 192.168.1.20 and bob@" + "corp.com\n"})
+        self.commit({"b.txt": "ip 192.168." + "1.20 and bob@" + "corp.com\n"})
         r = self.scan()
         self.assertEqual((r["blocks"], r["warns"]), (0, 2))
         self.assertTrue(r["passed"])
