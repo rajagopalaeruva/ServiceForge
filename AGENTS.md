@@ -18,6 +18,18 @@ mvn spring-boot:run          # serves http://localhost:8080
 # Frontend (from /frontend)
 npm install
 npm start                    # serves http://localhost:4200
+
+# Pipeline checks (from the repo root; needs Python 3, standard library only, nothing to pip install;
+# use python3 instead of py on macOS/Linux. Tested on Windows with Python 3.13 only; 3.9 or newer is expected to work.
+# ADR-006 is proposed: the scripts/*.ps1 stay the reference until it is accepted)
+py scripts/pipeline.py status --feature N
+py scripts/pipeline.py gate --role Developer --feature N
+py scripts/pipeline.py plan --feature N
+py scripts/pipeline.py traceability --feature N [--strict] [--waive AC-1,AC-2]
+py scripts/pipeline.py push [--range R] [--strict]
+py scripts/pipeline.py guard-adr            # hook helper: reads the hook JSON on stdin
+# every command except guard-adr also takes --json
+py -m unittest discover -s scripts/tests    # tests for the pipeline tools
 ```
 
 ## The one rule every agent follows here
