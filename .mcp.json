@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "serviceforge-dispatch": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["--directory", "mcp-server", "run", "serviceforge-dispatch-mcp"],
+      "env": { "SERVICEFORGE_BASE_URL": "http://localhost:8080" }
+    }
+  }
+}
