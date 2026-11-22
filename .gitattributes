@@ -1,0 +1,2 @@
+# Shell hooks must keep LF line endings on every checkout (a CRLF script fails in sh).
+.githooks/* text eol=lf
