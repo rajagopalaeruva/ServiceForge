@@ -1,10 +1,31 @@
 #!/bin/sh
-# pre-push: scan outgoing commits for secrets and sensitive details (see scripts/check-push.ps1).
+# pre-push: scan outgoing commits for secrets and sensitive details (see scripts/pipeline.py, ADR-006).
 # Enable once per clone:  git config core.hooksPath .githooks
 # Git passes: $1 = remote name, $2 = remote URL; stdin lines: <local ref> <local sha> <remote ref> <remote sha>
+#
+# Runs the Python scanner (py on Windows, python3 or python elsewhere). While the PowerShell script
+# still exists (it is retired under ADR-006, question Q-1) it is the fallback when no Python is found.
+# With neither, the push is blocked: a secret scan that cannot run must not pass silently.
 
 zero="0000000000000000000000000000000000000000"
 status=0
+
+scan() {
+  # $1 = revision range. stdin is redirected so the scanner cannot consume the ref lines being read.
+  if command -v py >/dev/null 2>&1; then
+    py scripts/pipeline.py push --range "$1" </dev/null
+  elif command -v python3 >/dev/null 2>&1; then
+    python3 scripts/pipeline.py push --range "$1" </dev/null
+  elif command -v python >/dev/null 2>&1; then
+    python scripts/pipeline.py push --range "$1" </dev/null
+  elif [ -f scripts/check-push.ps1 ] && command -v powershell.exe >/dev/null 2>&1; then
+    echo "pre-push: Python not found, using scripts/check-push.ps1" >&2
+    powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-push.ps1 -Range "$1" </dev/null
+  else
+    echo "pre-push: no Python (py, python3, python) and no PowerShell fallback; cannot scan." >&2
+    return 1
+  fi
+}
 
 while read -r local_ref local_sha remote_ref remote_sha; do
   # Deleting a remote ref sends no commits.
@@ -17,10 +38,10 @@ while read -r local_ref local_sha remote_ref remote_sha; do
   else
     range="$remote_sha..$local_sha"
   fi
-  powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/check-push.ps1 -Range "$range" || status=1
+  scan "$range" || status=1
 done
 
 if [ "$status" -ne 0 ]; then
-  echo "pre-push: blocked by check-push. Fix the findings, or bypass knowingly with 'git push --no-verify'." >&2
+  echo "pre-push: blocked by the push scan. Fix the findings, or bypass knowingly with 'git push --no-verify'." >&2
 fi
 exit $status
