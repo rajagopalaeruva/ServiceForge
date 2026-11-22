@@ -18,6 +18,7 @@ Every new ADR goes through design review (Reviewer agent, design mode) before a 
 | [ADR-003](ADR-003-store-reservations-separately-from-jobs.md) | Keep parts and reservations in their own structures, not on `Job` | Parts and per-job reserved quantities are separate maps in `MockDataStore`; `Job` and its JSON are untouched. | accepted | 2 | FR-1, FR-8, FR-9, FR-13, FR-17, NFR-1, NFR-4, NFR-8, AC-15, AC-16, AC-21, AC-22 |
 | [ADR-004](ADR-004-map-errors-to-apierror-in-one-place.md) | Map Feature 2 errors to `ApiError` in one place | One `@RestControllerAdvice` (`ApiExceptionHandler`, from BUG-003) maps 400; Feature 2 uses its own exception types for 404 and 409. | accepted | 2 | FR-5, FR-11, FR-12, NFR-2, NFR-7, NFR-8, AC-9, AC-10, AC-11, AC-13, EC-9 |
 | [ADR-005](ADR-005-parse-quantity-strictly-on-the-reservation-request-only.md) | Parse the reservation quantity strictly, on that request only | Strict whole-number parsing on the reservation quantity field only; Jackson's default leniency stays on for Feature 1. | accepted | 2 | FR-5, NFR-7, NFR-8, AC-9, EC-1, EC-2, EC-3 |
+| [ADR-006](ADR-006-write-pipeline-tools-in-python.md) | Write the pipeline check tools in Python with JSON output | Python, standard library only, one `pipeline.py` command per check with `--json`; the `.ps1` scripts stay until retired. | accepted | all | Process |
 
 ## Features without ADRs
 
