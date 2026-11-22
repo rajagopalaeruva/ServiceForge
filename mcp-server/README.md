@@ -12,7 +12,7 @@ The Spring Boot app is not modified.
 | Tool (read) | `get_technician_availability(technicianId, windowStart, windowEnd)` | Applies the 45-minute travel buffer to the technician's jobs. |
 | Tool (read) | `get_part_stock(sku)` | Stock remaining after reservations. |
 | Tool (**write**) | `reserve_part_for_job(jobId, sku, quantity)` | Only write. Calls `POST /api/jobs/{jobId}/reservations`. Use only after the dispatcher confirms. |
-| Resource | `serviceforge://catalog/parts` | sku, name, quantityOnHand. |
+| Resource | `serviceforge://catalog/parts` | sku, name, available (already net of reservations). |
 | Resource | `serviceforge://session/dispatch-brief` | Technicians, today's open afternoon jobs, reserved parts. Capped at 2 KB; contains no customer names. |
 | Prompt | `prep-job-dispatch(jobId)` | User-invoked workflow. The part heuristic lives here, not in a tool. |
 
@@ -34,7 +34,7 @@ No secrets, no API key, no bodies logged, logs go to stderr.
 
 ## Known limits
 
-- `quantityOnHand` is the backend's `available`, which is stock **after** reservations.
+- `available` is the backend's field of the same name: stock **after** reservations, so it is the number you can still reserve.
 - The sku is derived from the part name, so renaming a part changes its sku. Two parts that slug to the same value get `-<partId>` appended.
 - A timeout *after* the reservation POST is sent returns "outcome unknown, check get_part_stock before retrying". There is no idempotency key because the backend has none.
 - The dispatch brief uses this machine's clock for "today" and "afternoon" (from 12:00); the backend uses its own `LocalDateTime.now()`. They agree when both run on one machine.

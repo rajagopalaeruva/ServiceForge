@@ -78,7 +78,7 @@ class ServiceForgeClient:
         for p, sku in zip(raw, skus):
             if not sku or skus.count(sku) > 1:  # collision or empty slug: make it unique and stable
                 sku = f"{sku or 'PART'}-{p['id']}"
-            out.append({"sku": sku, "partId": p["id"], "name": p["name"], "quantityOnHand": p["available"]})
+            out.append({"sku": sku, "partId": p["id"], "name": p["name"], "available": p["available"]})
         return out
 
     def all_jobs(self) -> list[dict]:

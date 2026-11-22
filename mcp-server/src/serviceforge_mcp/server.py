@@ -38,7 +38,7 @@ class AvailabilityResult(TypedDict):
 class StockResult(TypedDict):
     sku: str
     name: str
-    quantityOnHand: int
+    available: int  # units still free to reserve: already net of existing reservations
 
 
 class ReservationResult(TypedDict):
@@ -104,7 +104,7 @@ def reserve_part_for_job(
 
 @mcp.resource("serviceforge://catalog/parts", mime_type="application/json")
 def parts_catalog() -> str:
-    """Parts catalogue (sku, name, quantityOnHand). Attach at session start to resolve a part name to a sku."""
+    """Parts catalogue (sku, name, available; available is already net of existing reservations). Attach at session start to resolve a part name to a sku."""
     try:
         return json.dumps(logic.parts_catalog(client()), separators=(",", ":"))
     except ServiceForgeError as e:

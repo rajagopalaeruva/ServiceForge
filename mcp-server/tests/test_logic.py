@@ -89,7 +89,7 @@ def test_unknown_technician_is_actionable():
 
 
 def test_part_stock_and_unknown_sku():
-    assert logic.part_stock(make(), "air-filter")["quantityOnHand"] == 25
+    assert logic.part_stock(make(), "air-filter")["available"] == 25
     with pytest.raises(ServiceForgeError, match=r"unknown sku 'CMP-CLUTCH'; known skus are CAPACITOR-40UF, AIR-FILTER"):
         logic.part_stock(make(), "CMP-CLUTCH")
 

@@ -61,7 +61,7 @@ def _resolve_sku(c: ServiceForgeClient, sku: str) -> dict:
 
 def part_stock(c: ServiceForgeClient, sku: str) -> dict:
     p = _resolve_sku(c, sku)
-    return {"sku": p["sku"], "name": p["name"], "quantityOnHand": p["quantityOnHand"]}
+    return {"sku": p["sku"], "name": p["name"], "available": p["available"]}
 
 
 def reserve_part(c: ServiceForgeClient, job_id: int, sku: str, quantity: int) -> dict:
@@ -77,7 +77,7 @@ def reserve_part(c: ServiceForgeClient, job_id: int, sku: str, quantity: int) ->
         if e.status == 404:
             raise ServiceForgeError(f"unknown sku '{p['sku']}'; re-read serviceforge://catalog/parts") from None
         if e.status == 409 and "insufficient" in e.message.lower():
-            have = next((x["quantityOnHand"] for x in c.parts() if x["sku"] == p["sku"]), "unknown")
+            have = next((x["available"] for x in c.parts() if x["sku"] == p["sku"]), "unknown")
             raise ServiceForgeError(
                 f"insufficient stock for {p['sku']}: requested {quantity}, on hand {have}"
             ) from None
@@ -91,7 +91,7 @@ def reserve_part(c: ServiceForgeClient, job_id: int, sku: str, quantity: int) ->
 
 
 def parts_catalog(c: ServiceForgeClient) -> dict:
-    return {"parts": [{"sku": p["sku"], "name": p["name"], "quantityOnHand": p["quantityOnHand"]} for p in c.parts()]}
+    return {"parts": [{"sku": p["sku"], "name": p["name"], "available": p["available"]} for p in c.parts()]}
 
 
 def dispatch_brief(c: ServiceForgeClient, now: datetime | None = None) -> dict:
