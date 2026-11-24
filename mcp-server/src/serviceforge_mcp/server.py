@@ -8,6 +8,7 @@ from __future__ import annotations
 import json
 import logging
 import sys
+import argparse, os
 from typing import Annotated
 
 from mcp.server.fastmcp import FastMCP
@@ -48,7 +49,11 @@ class ReservationResult(TypedDict):
     status: str
 
 
-mcp = FastMCP("serviceforge-dispatch")
+mcp = FastMCP(
+    "serviceforge-dispatch",
+    host=os.getenv("MCP_HOST", "127.0.0.1"),   # keep loopback unless you add auth
+    port=int(os.getenv("MCP_PORT", "8000")),
+)
 _client: ServiceForgeClient | None = None
 
 
@@ -140,7 +145,10 @@ def prep_job_dispatch(jobId: str) -> str:
 
 
 def main() -> None:
-    mcp.run(transport="stdio")
+    p = argparse.ArgumentParser()
+    p.add_argument("--transport", choices=["stdio", "streamable-http"],
+                   default=os.getenv("MCP_TRANSPORT", "stdio"))
+    mcp.run(transport=p.parse_args().transport)
 
 
 if __name__ == "__main__":

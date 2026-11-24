@@ -62,6 +62,52 @@ Host config (paste into your MCP client config; adjust the path):
 }
 ```
 
+### HTTP transport (streamable-http)
+
+The server can also run over streamable HTTP instead of stdio. Start it yourself, then point the client at its URL:
+
+```powershell
+cd mcp-server
+uv run serviceforge-dispatch-mcp --transport streamable-http
+# or: $env:MCP_TRANSPORT="streamable-http"; uv run serviceforge-dispatch-mcp
+```
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `MCP_TRANSPORT` | `stdio` | `stdio` or `streamable-http` (the `--transport` flag overrides it). |
+| `MCP_HOST` | `127.0.0.1` | Bind address. Keep loopback: there is no authentication. |
+| `MCP_PORT` | `8000` | Listen port. |
+| `SERVICEFORGE_BASE_URL` | `http://localhost:8080` | Backend the server calls (set it in the server's environment, not the client's). |
+
+Host config (the endpoint is `http://127.0.0.1:8000/mcp`; clients such as Claude Code and VS Code use `"type": "http"`):
+
+```json
+{
+  "mcpServers": {
+    "serviceforge-dispatch-http": {
+      "type": "http",
+      "url": "http://127.0.0.1:8000/mcp"
+    }
+  }
+}
+```
+
+GitHub Copilot CLI (`~/.copilot/mcp-config.json`) needs one extra field, `"tools"`, on each server entry:
+
+```json
+{
+  "mcpServers": {
+    "serviceforge-dispatch-http": {
+      "type": "http",
+      "url": "http://127.0.0.1:8000/mcp",
+      "tools": ["*"]
+    }
+  }
+}
+```
+
+> **Note:** `"tools": ["*"]` is specific to Copilot CLI. Without it no tools are exposed; use a list such as `["get_part_stock", "get_technician_availability"]` to leave out the write tool `reserve_part_for_job`. Other clients (Claude Code, VS Code, Cursor) don't use this field, so omit it there.
+
 The `mcp` dependency is pinned `>=1.10,<2` (1.10 added structured tool output): version 2 renamed `FastMCP` and changed the API.
 
 ## Test
@@ -75,4 +121,4 @@ $env:PYTHONPATH="src"; .venv\Scripts\python -m pytest -q          # 17 unit test
 
 ## Out of scope
 
-HTTP/SSE transport, low-stock alerts, reservation expiry, any backend change, technician skills.
+Legacy SSE transport, HTTP authentication, low-stock alerts, reservation expiry, any backend change, technician skills.
